@@ -1,7 +1,7 @@
 [project]
 name = "code-execution-mcp"
-version = "0.2.0"
-description = "MCP server exposing code execution and HuggingFace model capabilities"
+version = "0.3.0"
+description = "MCP server exposing code execution, HuggingFace model management, LoRA/PEFT, Diffusers, and RAG pipeline capabilities"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -20,6 +20,24 @@ huggingface = [
     "torch>=2.1.0",
     "sentence-transformers>=2.6.0",
     "datasets>=3.0.0",
+    "huggingface-hub>=0.19.0",
+]
+peft = [
+    "peft>=0.10.0",
+    "bitsandbytes>=0.43.0",
+    "accelerate>=0.27.0",
+]
+diffusers = [
+    "diffusers>=0.27.0",
+    "accelerate>=0.27.0",
+]
+rag = [
+    "langchain>=0.2.0",
+    "langchain-community>=0.2.0",
+    "faiss-cpu>=1.8.0",
+]
+all = [
+    "code-execution-mcp[huggingface,peft,diffusers,rag]",
 ]
 
 [project.scripts]

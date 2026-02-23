@@ -7,11 +7,12 @@ fails inside pytest.  We patch sys.stdin/stdout with real IO-like objects
 before the import chain reaches tty_session.
 """
 
+import asyncio
 import io
 import os
 import re
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -25,7 +26,7 @@ if not hasattr(sys.stdin, "reconfigure"):
 if not hasattr(sys.stdout, "reconfigure"):
     sys.stdout = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")
 
-from code_execution_tool import CodeExecutionTool, truncate_text_agent  # noqa: E402
+from code_execution_tool import CodeExecutionTool, State, truncate_text_agent  # noqa: E402
 
 # Restore originals so pytest output works normally
 sys.stdin = _real_stdin
@@ -80,6 +81,41 @@ class TestPromptPatterns:
             f"Line {line!r}: expected match={expected_match}, got {matched}"
         )
 
+    def test_venv_prompt_with_different_users(self):
+        """Various venv-style prompts should all match."""
+        lines = [
+            "(venv) admin@server:/opt# ",
+            "(venv) test-user@dev:~/code$ ",
+            "(venv) a $",
+        ]
+        for line in lines:
+            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), (
+                f"Expected match for: {line!r}"
+            )
+
+    def test_root_prompt_variations(self):
+        """Various root prompts should match."""
+        lines = [
+            "root@myhost:/# ",
+            "root@a-b-c:/home/user/dir# ",
+        ]
+        for line in lines:
+            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), (
+                f"Expected match for: {line!r}"
+            )
+
+    def test_bash_version_prompt_variations(self):
+        """Different bash versions."""
+        lines = [
+            "bash-4.4$ ",
+            "bash-5.2$",
+            "bash-3.0$ ",
+        ]
+        for line in lines:
+            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), (
+                f"Expected match for: {line!r}"
+            )
+
 
 class TestDialogPatterns:
     """Verify the regex dialog patterns used to detect interactive prompts."""
@@ -115,6 +151,30 @@ class TestDialogPatterns:
         assert matched == expected_match, (
             f"Line {line!r}: expected match={expected_match}, got {matched}"
         )
+
+    def test_case_insensitive_yn(self):
+        """Y/N matching should be case-insensitive."""
+        for line in ["y/n", "Y/N", "Y/n", "y/N"]:
+            assert any(pat.search(line.strip()) for pat in self.DIALOG_PATTERNS)
+
+    def test_case_insensitive_yes_no(self):
+        """yes/no matching should be case-insensitive."""
+        for line in ["yes/no", "Yes/No", "YES/NO", "yEs/nO"]:
+            assert any(pat.search(line.strip()) for pat in self.DIALOG_PATTERNS)
+
+    def test_colon_not_in_middle(self):
+        """A colon in the middle of a line (not at end) should NOT match."""
+        line = "key: value and more text"
+        # The colon-at-end pattern looks for :\s*$
+        # "key: value and more text" -> colon is not at end
+        matched = any(pat.search(line.strip()) for pat in self.DIALOG_PATTERNS)
+        assert not matched
+
+    def test_question_mark_in_middle(self):
+        """A question mark in the middle should NOT match (only end-of-line)."""
+        line = "Is this a ? or not, I think not"
+        matched = any(pat.search(line.strip()) for pat in self.DIALOG_PATTERNS)
+        assert not matched
 
 
 # ============================================================================
@@ -176,6 +236,23 @@ class TestFixFullOutput:
         result = code_exec_tool.fix_full_output(raw)
         assert result == "line1\nline2\nline3"
 
+    def test_multiple_hex_escapes_in_one_line(self, code_exec_tool):
+        raw = r"abc\x01def\x02ghi"
+        result = code_exec_tool.fix_full_output(raw)
+        assert "abc" in result
+        assert "def" in result
+        assert "ghi" in result
+        assert r"\x01" not in result
+        assert r"\x02" not in result
+
+    def test_hex_escape_case_insensitive(self, code_exec_tool):
+        """Hex escapes with uppercase letters should also be removed."""
+        raw = r"test\xABvalue\xCDend"
+        result = code_exec_tool.fix_full_output(raw)
+        assert r"\xAB" not in result
+        assert r"\xCD" not in result
+        assert "test" in result
+
 
 # ============================================================================
 # format_command_for_output()
@@ -214,6 +291,17 @@ class TestFormatCommandForOutput:
         result = code_exec_tool.format_command_for_output("echo\thello\tworld")
         assert "\t" not in result
 
+    def test_empty_command(self, code_exec_tool):
+        result = code_exec_tool.format_command_for_output("")
+        assert result == ""
+
+    def test_command_exactly_200_chars(self, code_exec_tool):
+        """Command of exactly 200 chars (first truncation boundary)."""
+        cmd = "x" * 200
+        result = code_exec_tool.format_command_for_output(cmd)
+        # After taking [:200] and truncating to 100, should be <= ~103 chars
+        assert len(result) <= 200
+
 
 # ============================================================================
 # truncate_text_agent()
@@ -250,6 +338,12 @@ class TestTruncateTextAgent:
         text = "Q" * 101
         result = truncate_text_agent(text, threshold=100)
         assert len(result) <= 103  # 100 + "..."
+
+    def test_large_text_over_default_threshold(self):
+        """Text over 1MB default should be truncated."""
+        text = "A" * 1_100_000
+        result = truncate_text_agent(text)
+        assert len(result) < 1_100_000
 
 
 # ============================================================================
@@ -343,3 +437,88 @@ class TestCodeExecutionToolInit:
     def test_init_commands_custom(self):
         tool = CodeExecutionTool(init_commands=["export FOO=1", "cd /tmp"])
         assert tool.init_commands == ["export FOO=1", "cd /tmp"]
+
+    def test_log_attribute_exists(self):
+        tool = CodeExecutionTool()
+        assert hasattr(tool, "log")
+
+    def test_prompts_dir_points_to_prompts_folder(self):
+        tool = CodeExecutionTool()
+        assert tool.prompts_dir.endswith("prompts")
+
+
+# ============================================================================
+# prepare_state()
+# ============================================================================
+
+
+class TestPrepareState:
+    """Tests for CodeExecutionTool.prepare_state()."""
+
+    def test_prepare_state_creates_state_when_none(self):
+        tool = CodeExecutionTool()
+        assert tool.state is None
+
+        loop = asyncio.new_event_loop()
+        state = loop.run_until_complete(tool.prepare_state())
+        loop.close()
+
+        assert tool.state is not None
+        assert isinstance(tool.state, State)
+        assert isinstance(tool.state.shells, dict)
+
+    def test_prepare_state_preserves_existing_shells(self):
+        tool = CodeExecutionTool()
+        mock_shell = MagicMock()
+        tool.state = State(shells={0: mock_shell})
+
+        loop = asyncio.new_event_loop()
+        state = loop.run_until_complete(tool.prepare_state())
+        loop.close()
+
+        # Existing shells should be preserved
+        assert 0 in tool.state.shells
+        assert tool.state.shells[0] is mock_shell
+
+    def test_prepare_state_reset_specific_session(self):
+        tool = CodeExecutionTool()
+        mock_shell_0 = AsyncMock()
+        mock_shell_1 = AsyncMock()
+        tool.state = State(shells={0: mock_shell_0, 1: mock_shell_1})
+
+        loop = asyncio.new_event_loop()
+        state = loop.run_until_complete(tool.prepare_state(reset=True, session=0))
+        loop.close()
+
+        # Session 0 should have been closed and removed
+        mock_shell_0.close.assert_called_once()
+        # Session 1 should remain
+        assert 1 in tool.state.shells
+
+    def test_prepare_state_reset_all_sessions(self):
+        tool = CodeExecutionTool()
+        mock_shell_0 = AsyncMock()
+        mock_shell_1 = AsyncMock()
+        tool.state = State(shells={0: mock_shell_0, 1: mock_shell_1})
+
+        loop = asyncio.new_event_loop()
+        state = loop.run_until_complete(tool.prepare_state(reset=True, session=None))
+        loop.close()
+
+        # All sessions should be closed
+        mock_shell_0.close.assert_called_once()
+        mock_shell_1.close.assert_called_once()
+        assert len(tool.state.shells) == 0
+
+    def test_prepare_state_reset_nonexistent_session(self):
+        """Resetting a session that doesn't exist should not raise."""
+        tool = CodeExecutionTool()
+        mock_shell_0 = MagicMock()
+        tool.state = State(shells={0: mock_shell_0})
+
+        loop = asyncio.new_event_loop()
+        # Reset session 5, which doesn't exist -- should be no-op
+        state = loop.run_until_complete(tool.prepare_state(reset=True, session=5))
+        loop.close()
+
+        assert 0 in tool.state.shells  # session 0 untouched

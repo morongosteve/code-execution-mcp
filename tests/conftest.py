@@ -95,3 +95,26 @@ def code_exec_tool():
     from code_execution_tool import CodeExecutionTool
 
     return CodeExecutionTool()
+
+
+# ---------------------------------------------------------------------------
+# Mock model helpers
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_llm_model():
+    """Return a MagicMock that behaves like a LangChain LLM."""
+    from unittest.mock import MagicMock
+    mock = MagicMock(name="MockLLM")
+    mock.invoke.return_value = "mock llm output"
+    return mock
+
+
+@pytest.fixture
+def mock_embedding_model():
+    """Return a MagicMock that behaves like a LangChain embedding model."""
+    from unittest.mock import MagicMock
+    mock = MagicMock(name="MockEmbedding")
+    mock.embed_documents.return_value = [[0.1, 0.2, 0.3]]
+    mock.embed_query.return_value = [0.1, 0.2, 0.3]
+    return mock

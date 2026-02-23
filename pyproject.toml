@@ -36,8 +36,30 @@ rag = [
     "langchain-community>=0.2.0",
     "faiss-cpu>=1.8.0",
 ]
+audio = [
+    "transformers[torch]>=4.37.0",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+]
+training = [
+    "trl>=0.7.0",
+    "peft>=0.10.0",
+    "datasets>=3.0.0",
+    "accelerate>=0.27.0",
+    "bitsandbytes>=0.43.0",
+]
+vllm = [
+    "openai>=1.0.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.4.0",
+    "mypy>=1.0",
+]
 all = [
-    "code-execution-mcp[huggingface,peft,diffusers,rag]",
+    "code-execution-mcp[huggingface,peft,diffusers,rag,audio,training,vllm]",
 ]
 
 [project.scripts]
@@ -53,3 +75,18 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

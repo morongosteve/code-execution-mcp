@@ -3,6 +3,16 @@ import os
 import sys
 from fastmcp import FastMCP
 from code_execution_tool import CodeExecutionTool
+from security import (
+    validate_command,
+    audit,
+    execution_limiter,
+    model_load_limiter,
+    scan_output_for_secrets,
+    sanitize_model_id,
+    resource_limits,
+    redact_secrets,
+)
 from huggingface_tools import (
     list_models,
     load_hf_model,
@@ -18,6 +28,16 @@ from huggingface_tools import (
     generate_image,
     setup_rag_pipeline,
     rag_query,
+    hf_batch_generate,
+    hf_finetune,
+    hf_benchmark,
+    load_vllm_model,
+    hf_audio_transcribe,
+    hf_text_to_speech,
+    gpu_status,
+    model_download_status,
+    save_registry_state,
+    restore_registry_state,
 )
 
 # Helpers for debugging
@@ -62,8 +82,34 @@ code_tool = CodeExecutionTool(
 @mcp.tool()
 async def execute_terminal(command: str, session: int = 0) -> str:
     try:
+        # Rate limiting
+        allowed, msg = execution_limiter.check()
+        if not allowed:
+            audit.log_rate_limit("execution_limiter")
+            return f"Rate limit: {msg}"
+
+        # Audit log
+        audit.log_command(session=session, command=command)
+
+        # Validate (warn only, do not block)
+        is_safe, warning = validate_command(command)
+        if not is_safe:
+            audit.log_warning(f"Dangerous command in session {session}: {warning}")
+
         result = await code_tool.execute_terminal_command(session=session, command=command)
-        return result or "[No output]"
+        result = result or "[No output]"
+
+        # Truncate oversized output
+        if len(result) > resource_limits.MAX_OUTPUT_SIZE:
+            result = result[:resource_limits.MAX_OUTPUT_SIZE] + "\n[Output truncated]"
+
+        # Scan and redact secrets
+        secret_warnings = scan_output_for_secrets(result)
+        if secret_warnings:
+            audit.log_warning(f"Secrets detected in output: {'; '.join(secret_warnings)}")
+            result = redact_secrets(result)
+
+        return result
     except Exception as e:
         return f"Error executing terminal command: {str(e)}"
 
@@ -71,8 +117,29 @@ async def execute_terminal(command: str, session: int = 0) -> str:
 @mcp.tool()
 async def execute_python(code: str, session: int = 0) -> str:
     try:
+        # Rate limiting
+        allowed, msg = execution_limiter.check()
+        if not allowed:
+            audit.log_rate_limit("execution_limiter")
+            return f"Rate limit: {msg}"
+
+        # Audit log
+        audit.log_command(session=session, command=f"[python] {code[:200]}")
+
         result = await code_tool.execute_python_code(session=session, code=code)
-        return result or "[No output]"
+        result = result or "[No output]"
+
+        # Truncate oversized output
+        if len(result) > resource_limits.MAX_OUTPUT_SIZE:
+            result = result[:resource_limits.MAX_OUTPUT_SIZE] + "\n[Output truncated]"
+
+        # Scan and redact secrets
+        secret_warnings = scan_output_for_secrets(result)
+        if secret_warnings:
+            audit.log_warning(f"Secrets detected in output: {'; '.join(secret_warnings)}")
+            result = redact_secrets(result)
+
+        return result
     except Exception as e:
         return f"Error executing Python code: {str(e)}"
 
@@ -115,6 +182,7 @@ async def hf_load_model(
     temperature: float = 0.1,
     alias: str = "",
     ttl: int = 0,
+    quantize: str = "",
 ) -> str:
     """Load a HuggingFace model via LangChain for text generation.
 
@@ -128,8 +196,23 @@ async def hf_load_model(
         temperature: Sampling temperature
         alias: Optional alias for referencing the model later
         ttl: Time-to-live in seconds (0 = default 3600s). Model auto-evicts after this.
+        quantize: Quantization mode for local backend: '4bit', '8bit', or '' for none
     """
-    return await load_hf_model(repo_id, task, backend, max_new_tokens, temperature, alias, ttl)
+    # Validate model ID
+    valid, err = sanitize_model_id(repo_id)
+    if not valid:
+        return f"Invalid model ID: {err}"
+
+    # Rate limiting
+    allowed, msg = model_load_limiter.check()
+    if not allowed:
+        audit.log_rate_limit("model_load_limiter")
+        return f"Rate limit: {msg}"
+
+    # Audit log
+    audit.log_model_load(model_id=repo_id, backend=backend)
+
+    return await load_hf_model(repo_id, task, backend, max_new_tokens, temperature, alias, ttl, quantize)
 
 
 @mcp.tool()
@@ -151,6 +234,20 @@ async def hf_load_chat_model(
         alias: Optional alias for referencing the model later
         ttl: Time-to-live in seconds (0 = default 3600s)
     """
+    # Validate model ID
+    valid, err = sanitize_model_id(repo_id)
+    if not valid:
+        return f"Invalid model ID: {err}"
+
+    # Rate limiting
+    allowed, msg = model_load_limiter.check()
+    if not allowed:
+        audit.log_rate_limit("model_load_limiter")
+        return f"Rate limit: {msg}"
+
+    # Audit log
+    audit.log_model_load(model_id=repo_id, backend="chat")
+
     return await load_hf_chat_model(repo_id, max_new_tokens, temperature, alias, ttl)
 
 
@@ -169,6 +266,20 @@ async def hf_load_embeddings(
         alias: Optional alias for referencing the model later
         ttl: Time-to-live in seconds (0 = default 3600s)
     """
+    # Validate model ID
+    valid, err = sanitize_model_id(model_name)
+    if not valid:
+        return f"Invalid model ID: {err}"
+
+    # Rate limiting
+    allowed, msg = model_load_limiter.check()
+    if not allowed:
+        audit.log_rate_limit("model_load_limiter")
+        return f"Rate limit: {msg}"
+
+    # Audit log
+    audit.log_model_load(model_id=model_name, backend=backend)
+
     return await load_hf_embeddings(model_name, backend, alias, ttl)
 
 
@@ -232,6 +343,7 @@ async def hf_unload_model(model: str, model_type: str = "llm") -> str:
         model: Alias or name of the model to unload
         model_type: 'llm' for language models, 'embedding' for embedding models, 'all' to clear everything
     """
+    audit.log_model_unload(model_id=model)
     return await unload_model(model, model_type)
 
 
@@ -301,6 +413,23 @@ async def hf_load_peft_model(
         ttl: Time-to-live in seconds (0 = default 3600s)
         quantize: '4bit', '8bit', or '' for no quantization
     """
+    # Validate model IDs
+    valid, err = sanitize_model_id(base_model_id)
+    if not valid:
+        return f"Invalid base model ID: {err}"
+    valid, err = sanitize_model_id(adapter_id)
+    if not valid:
+        return f"Invalid adapter ID: {err}"
+
+    # Rate limiting
+    allowed, msg = model_load_limiter.check()
+    if not allowed:
+        audit.log_rate_limit("model_load_limiter")
+        return f"Rate limit: {msg}"
+
+    # Audit log
+    audit.log_model_load(model_id=f"{base_model_id}+{adapter_id}", backend="peft")
+
     return await load_peft_model(
         base_model_id, adapter_id, task, max_new_tokens,
         temperature, alias, ttl, quantize
@@ -393,7 +522,233 @@ async def hf_rag_query(
     return await rag_query(query, pipeline)
 
 
+# --- Batch Inference ---
+
+@mcp.tool()
+async def hf_batch_text_generate(
+    prompts_json: str,
+    model: str = "",
+    max_new_tokens: int = 0,
+    temperature: float = 0.0,
+) -> str:
+    """Generate text for multiple prompts in a single batch call.
+
+    More efficient than calling hf_text_generate multiple times.
+
+    Args:
+        prompts_json: JSON array of prompt strings.
+            Example: '["Tell me a joke", "Write a haiku", "Explain gravity"]'
+        model: Model alias or repo_id. If empty, uses the first loaded model
+        max_new_tokens: Override max tokens (0 = model default)
+        temperature: Override temperature (0.0 = model default)
+    """
+    return await hf_batch_generate(prompts_json, model, max_new_tokens, temperature)
+
+
+# --- Fine-tuning ---
+
+@mcp.tool()
+async def hf_finetune_model(
+    base_model_id: str,
+    dataset_name: str,
+    output_dir: str = "./finetuned_model",
+    num_epochs: int = 3,
+    learning_rate: float = 2e-4,
+    lora_r: int = 16,
+    lora_alpha: int = 32,
+    batch_size: int = 4,
+    max_seq_length: int = 512,
+) -> str:
+    """Fine-tune a model using LoRA/PEFT on a HuggingFace dataset.
+
+    Uses SFTTrainer from trl for supervised fine-tuning with LoRA adapters.
+    The fine-tuned adapter is saved to output_dir and can be loaded with hf_load_peft_model.
+
+    Args:
+        base_model_id: Base HuggingFace model ID (e.g. 'meta-llama/Llama-2-7b-hf')
+        dataset_name: HuggingFace dataset name (e.g. 'timdettmers/openassistant-guanaco')
+        output_dir: Directory to save the fine-tuned adapter (default: './finetuned_model')
+        num_epochs: Number of training epochs (default: 3)
+        learning_rate: Learning rate (default: 2e-4)
+        lora_r: LoRA rank (default: 16)
+        lora_alpha: LoRA alpha scaling (default: 32)
+        batch_size: Training batch size per device (default: 4)
+        max_seq_length: Maximum sequence length (default: 512)
+    """
+    # Validate model ID
+    valid, err = sanitize_model_id(base_model_id)
+    if not valid:
+        return f"Invalid base model ID: {err}"
+
+    # Rate limiting
+    allowed, msg = model_load_limiter.check()
+    if not allowed:
+        audit.log_rate_limit("model_load_limiter")
+        return f"Rate limit: {msg}"
+
+    audit.log_model_load(model_id=base_model_id, backend="finetune")
+
+    return await hf_finetune(
+        base_model_id, dataset_name, output_dir, num_epochs,
+        learning_rate, lora_r, lora_alpha, batch_size, max_seq_length
+    )
+
+
+# --- Benchmarking ---
+
+@mcp.tool()
+async def hf_benchmark_model(
+    model: str = "",
+    prompt: str = "The quick brown fox jumps over the lazy dog.",
+    num_runs: int = 5,
+    max_new_tokens: int = 50,
+) -> str:
+    """Benchmark a loaded model's inference performance.
+
+    Reports: average latency, tokens/sec, p50/p95 latency across multiple runs.
+
+    Args:
+        model: Model alias or repo_id. If empty, uses the first loaded model
+        prompt: Benchmark prompt text
+        num_runs: Number of inference runs for averaging (default: 5)
+        max_new_tokens: Max tokens per run (default: 50)
+    """
+    return await hf_benchmark(model, prompt, num_runs, max_new_tokens)
+
+
+# --- vLLM / TGI Backend ---
+
+@mcp.tool()
+async def hf_load_vllm_model(
+    repo_id: str,
+    backend: str = "vllm",
+    port: int = 8000,
+    alias: str = "",
+    ttl: int = 0,
+) -> str:
+    """Load a model via vLLM or TGI inference server.
+
+    Connects to a running vLLM/TGI server that exposes an OpenAI-compatible API.
+
+    Args:
+        repo_id: HuggingFace model repository ID served by the server
+        backend: 'vllm' or 'tgi' (default: 'vllm')
+        port: Port where the inference server is running (default: 8000)
+        alias: Optional alias for the model
+        ttl: Time-to-live in seconds (0 = default 3600s)
+    """
+    # Validate model ID
+    valid, err = sanitize_model_id(repo_id)
+    if not valid:
+        return f"Invalid model ID: {err}"
+
+    # Rate limiting
+    allowed, msg = model_load_limiter.check()
+    if not allowed:
+        audit.log_rate_limit("model_load_limiter")
+        return f"Rate limit: {msg}"
+
+    audit.log_model_load(model_id=repo_id, backend=backend)
+
+    return await load_vllm_model(repo_id, backend, port, alias, ttl)
+
+
+# --- Audio Pipeline ---
+
+@mcp.tool()
+async def hf_transcribe_audio(
+    audio_path: str,
+    model: str = "openai/whisper-base",
+    language: str = "",
+    task: str = "transcribe",
+) -> str:
+    """Transcribe audio using Whisper or other ASR models.
+
+    Supports transcription and translation tasks.
+
+    Args:
+        audio_path: Path to the audio file to transcribe
+        model: HuggingFace ASR model ID (default: 'openai/whisper-base')
+        language: Language code (e.g. 'en', 'fr'). Empty for auto-detect
+        task: 'transcribe' for same-language, 'translate' for translation to English
+    """
+    return await hf_audio_transcribe(audio_path, model, language, task)
+
+
+@mcp.tool()
+async def hf_speak_text(
+    text: str,
+    model: str = "microsoft/speecht5_tts",
+    output_path: str = "output.wav",
+) -> str:
+    """Convert text to speech using a HuggingFace TTS model.
+
+    Args:
+        text: Text to convert to speech
+        model: HuggingFace TTS model ID (default: 'microsoft/speecht5_tts')
+        output_path: Path to save the output audio file (default: 'output.wav')
+    """
+    return await hf_text_to_speech(text, model, output_path)
+
+
+# --- GPU & Model Status ---
+
+@mcp.tool()
+async def hf_gpu_status() -> str:
+    """Report GPU memory usage, available VRAM, and loaded model info.
+
+    Works with CUDA GPUs and falls back gracefully when no GPU is available.
+    """
+    return await gpu_status()
+
+
+@mcp.tool()
+async def hf_model_download_status(repo_id: str) -> str:
+    """Check download/cache status for a HuggingFace model.
+
+    Reports whether the model is cached locally, its size, cache path,
+    and remote model info.
+
+    Args:
+        repo_id: HuggingFace model repository ID (e.g. 'meta-llama/Meta-Llama-3-8B-Instruct')
+    """
+    # Validate model ID
+    valid, err = sanitize_model_id(repo_id)
+    if not valid:
+        return f"Invalid model ID: {err}"
+
+    return await model_download_status(repo_id)
+
+
+# --- Model Registry Persistence ---
+
+@mcp.tool()
+async def hf_save_registry(path: str = ".model_registry_state.json") -> str:
+    """Save current model registry state to disk for later restoration.
+
+    Saves model metadata so they can be re-loaded later with hf_restore_registry.
+
+    Args:
+        path: File path to save the state (default: '.model_registry_state.json')
+    """
+    return await save_registry_state(path)
+
+
+@mcp.tool()
+async def hf_restore_registry(path: str = ".model_registry_state.json") -> str:
+    """Restore model registry state from a saved file and re-load models.
+
+    Args:
+        path: File path to load the state from (default: '.model_registry_state.json')
+    """
+    return await restore_registry_state(path)
+
+
 def main():
+    # Log startup with resource info
+    mem_mb = resource_limits.get_memory_usage_mb()
+    ok, disk_msg = resource_limits.check_disk_space()
+    audit.log_warning(f"Server starting. Memory: {mem_mb:.1f}MB. {disk_msg}")
     # Run with stdio transport (default)
     mcp.run()
 

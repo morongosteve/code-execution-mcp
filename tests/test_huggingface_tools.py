@@ -7,12 +7,9 @@ environment.
 
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 import huggingface_tools as ht
-
 
 # ---------------------------------------------------------------------------
 # Helper to run async tool functions
@@ -502,7 +499,7 @@ class TestHFChat:
             {"role": "assistant", "content": "Hi there"},
             {"role": "user", "content": "How are you?"},
         ])
-        result = run(ht.hf_chat(messages_json=messages, model="chat"))
+        run(ht.hf_chat(messages_json=messages, model="chat"))
         # Should invoke the model with the message objects
         mock_llm.invoke.assert_called_once()
 
@@ -757,7 +754,7 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter([]))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
             sys.modules["datasets"].load_dataset.return_value = mock_ds
 
@@ -773,7 +770,7 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter([{"col": "val"}]))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
             sys.modules["datasets"].load_dataset.return_value = mock_ds
 
@@ -797,7 +794,7 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter([{"text": long_text}]))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
             sys.modules["datasets"].load_dataset.return_value = mock_ds
             result = run(ht.hf_dataset_info(dataset_name="test/ds", num_rows=1))
@@ -838,7 +835,7 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter(rows))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
             sys.modules["datasets"].load_dataset.return_value = mock_ds
             result = run(ht.hf_dataset_info(dataset_name="test/ds", num_rows=5))

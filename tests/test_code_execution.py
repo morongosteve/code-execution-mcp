@@ -12,7 +12,7 @@ import io
 import os
 import re
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -460,7 +460,7 @@ class TestPrepareState:
         assert tool.state is None
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state())
+        loop.run_until_complete(tool.prepare_state())
         loop.close()
 
         assert tool.state is not None
@@ -473,7 +473,7 @@ class TestPrepareState:
         tool.state = State(shells={0: mock_shell})
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state())
+        loop.run_until_complete(tool.prepare_state())
         loop.close()
 
         # Existing shells should be preserved
@@ -487,7 +487,7 @@ class TestPrepareState:
         tool.state = State(shells={0: mock_shell_0, 1: mock_shell_1})
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state(reset=True, session=0))
+        loop.run_until_complete(tool.prepare_state(reset=True, session=0))
         loop.close()
 
         # Session 0 should have been closed and removed
@@ -502,7 +502,7 @@ class TestPrepareState:
         tool.state = State(shells={0: mock_shell_0, 1: mock_shell_1})
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state(reset=True, session=None))
+        loop.run_until_complete(tool.prepare_state(reset=True, session=None))
         loop.close()
 
         # All sessions should be closed
@@ -518,7 +518,7 @@ class TestPrepareState:
 
         loop = asyncio.new_event_loop()
         # Reset session 5, which doesn't exist -- should be no-op
-        state = loop.run_until_complete(tool.prepare_state(reset=True, session=5))
+        loop.run_until_complete(tool.prepare_state(reset=True, session=5))
         loop.close()
 
         assert 0 in tool.state.shells  # session 0 untouched

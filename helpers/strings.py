@@ -2,18 +2,19 @@ import re
 import sys
 import time
 
+
 def sanitize_string(s: str, encoding: str = "utf-8") -> str:
     # Replace surrogates and invalid unicode with replacement character
     if not isinstance(s, str):
         s = str(s)
     return s.encode(encoding, 'replace').decode(encoding, 'replace')
 
-def calculate_valid_match_lengths(first: bytes | str, second: bytes | str, 
-                                  deviation_threshold: int = 5, 
-                                  deviation_reset: int = 5, 
+def calculate_valid_match_lengths(first: bytes | str, second: bytes | str,
+                                  deviation_threshold: int = 5,
+                                  deviation_reset: int = 5,
                                   ignore_patterns: list[bytes|str] = [],
                                   debug: bool = False) -> tuple[int, int]:
-    
+
     first_length = len(first)
     second_length = len(second)
 
@@ -100,7 +101,7 @@ def format_key(key: str) -> str:
     Converts camelCase and snake_case to Title Case with spaces."""
     # First replace non-alphanumeric with spaces
     result = ''.join(' ' if not c.isalnum() else c for c in key)
-    
+
     # Handle camelCase
     formatted = ''
     for i, c in enumerate(result):
@@ -108,7 +109,7 @@ def format_key(key: str) -> str:
             formatted += ' ' + c
         else:
             formatted += c
-            
+
     # Split on spaces and capitalize each word
     return ' '.join(word.capitalize() for word in formatted.split())
 
@@ -118,7 +119,7 @@ def dict_to_text(d: dict) -> str:
         parts.append(f"{format_key(str(key))}:")
         parts.append(f"{value}")
         parts.append("")  # Add empty line between entries
-    
+
     return "\n".join(parts).rstrip()  # rstrip to remove trailing newline
 
 def truncate_text(text: str, length: int, at_end: bool = True, replacement: str = "...") -> str:
@@ -129,20 +130,20 @@ def truncate_text(text: str, length: int, at_end: bool = True, replacement: str 
          return text[:length] + replacement
     else:
         return replacement + text[-length:]
-    
+
 def truncate_text_by_ratio(text: str, threshold: int, replacement: str = "...", ratio: float = 0.5) -> str:
     threshold = int(threshold)
     if not threshold or len(text) <= threshold:
         return text
-    
+
     # Clamp ratio to valid range
     ratio = max(0.0, min(1.0, float(ratio)))
-    
+
     # Calculate available space for original text after accounting for replacement
     available_space = threshold - len(replacement)
     if available_space <= 0:
         return replacement[:threshold]
-    
+
     # Handle edge cases for efficiency
     if ratio == 0.0:
         # Replace from start: "...text"

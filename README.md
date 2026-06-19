@@ -192,7 +192,12 @@ pip install code-execution-mcp[huggingface]
 # Install with all features
 pip install code-execution-mcp[all]
 
-# Set your HuggingFace token (optional, for gated models)
+# Install the HuggingFace CLI (optional, for model downloads and auth)
+curl -LsSf https://hf.co/cli/install.sh | bash
+
+# Authenticate with HuggingFace (optional, for gated models)
+hf auth login
+# Or set your token via environment variable
 export HUGGINGFACE_TOKEN=hf_...
 ```
 

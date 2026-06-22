@@ -82,6 +82,10 @@ code_tool = CodeExecutionTool(
 @mcp.tool()
 async def execute_terminal(command: str, session: int = 0) -> str:
     try:
+        # Enforce input size limit
+        if len(command.encode()) > resource_limits.MAX_FILE_SIZE:
+            return f"Command exceeds maximum allowed size ({resource_limits.MAX_FILE_SIZE // (1024*1024)}MB)."
+
         # Rate limiting
         allowed, msg = execution_limiter.check()
         if not allowed:
@@ -97,7 +101,7 @@ async def execute_terminal(command: str, session: int = 0) -> str:
             audit.log_warning(f"Dangerous command in session {session}: {warning}")
 
         result = await code_tool.execute_terminal_command(session=session, command=command)
-        result = result or "[No output]"
+        result = result or code_tool.read_prompt("fw.code.no_output.md")
 
         # Truncate oversized output
         if len(result) > resource_limits.MAX_OUTPUT_SIZE:
@@ -117,6 +121,10 @@ async def execute_terminal(command: str, session: int = 0) -> str:
 @mcp.tool()
 async def execute_python(code: str, session: int = 0) -> str:
     try:
+        # Enforce input size limit
+        if len(code.encode()) > resource_limits.MAX_FILE_SIZE:
+            return f"Code exceeds maximum allowed size ({resource_limits.MAX_FILE_SIZE // (1024*1024)}MB)."
+
         # Rate limiting
         allowed, msg = execution_limiter.check()
         if not allowed:
@@ -127,7 +135,7 @@ async def execute_python(code: str, session: int = 0) -> str:
         audit.log_command(session=session, command=f"[python] {code[:200]}")
 
         result = await code_tool.execute_python_code(session=session, code=code)
-        result = result or "[No output]"
+        result = result or code_tool.read_prompt("fw.code.no_output.md")
 
         # Truncate oversized output
         if len(result) > resource_limits.MAX_OUTPUT_SIZE:
@@ -148,7 +156,7 @@ async def execute_python(code: str, session: int = 0) -> str:
 async def get_output(session: int = 0) -> str:
     try:
         result = await code_tool.get_terminal_output(session=session)
-        return result or "[No output]"
+        return result or code_tool.read_prompt("fw.code.no_output.md")
     except Exception as e:
         return f"Error getting terminal output: {str(e)}"
 

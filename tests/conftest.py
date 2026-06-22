@@ -1,8 +1,9 @@
 """Common fixtures for code-execution-mcp tests."""
 
 import io
-import sys
 import os
+import sys
+
 import pytest
 
 # Ensure the project root is on sys.path so we can import modules directly.

@@ -12,7 +12,6 @@ import logging
 import os
 import re
 import time
-from typing import Optional
 
 logger = logging.getLogger("code-execution-mcp.security")
 

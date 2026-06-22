@@ -1,13 +1,20 @@
-import os, webcolors, html
+import atexit
+import html
+import os
 import sys
-import tempfile
 from datetime import datetime
+
+import webcolors
+
 
 class PrintStyle:
     last_endline = True
     log_file_path = None
 
-    def __init__(self, bold=False, italic=False, underline=False, font_color="default", background_color="default", padding=False, log_only=False):
+    def __init__(
+        self, bold=False, italic=False, underline=False,
+        font_color="default", background_color="default", padding=False, log_only=False,
+    ):
         self.bold = bold
         self.italic = italic
         self.underline = underline
@@ -26,7 +33,10 @@ class PrintStyle:
                 log_filename = datetime.now().strftime("log_%Y%m%d_%H%M%S.html")
                 PrintStyle.log_file_path = os.path.join(logs_dir, log_filename)
                 with open(PrintStyle.log_file_path, "w") as f:
-                    f.write("<html><body style='background-color:black;font-family: Arial, Helvetica, sans-serif;'><pre>\n")
+                    f.write(
+                        "<html><body style='background-color:black;"
+                        "font-family: Arial, Helvetica, sans-serif;'><pre>\n"
+                    )
             except Exception:
                 # If log creation fails, disable logging silently
                 PrintStyle.log_file_path = None
@@ -102,10 +112,10 @@ class PrintStyle:
 
     def get(self, *args, sep=' ', **kwargs):
         text = sep.join(map(str, args))
-        
+
         # Automatically mask secrets in all print output
         # (Removed SecretsManager dependency for MCP)
-        
+
         return text, self._get_styled_text(text), self._get_html_styled_text(text)
 
     def print(self, *args, sep=' ', **kwargs):
@@ -159,6 +169,4 @@ class PrintStyle:
     def error(text: str):
         PrintStyle(font_color="red", padding=True).print("Error: "+text)
 
-# Ensure HTML file is closed properly when the program exits
-import atexit
 atexit.register(PrintStyle._close_html_log)

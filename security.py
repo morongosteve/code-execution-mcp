@@ -12,7 +12,6 @@ import logging
 import os
 import re
 import time
-from typing import Optional
 
 logger = logging.getLogger("code-execution-mcp.security")
 
@@ -23,12 +22,12 @@ logger = logging.getLogger("code-execution-mcp.security")
 # Dangerous command patterns that should be warned about
 # (not blocked - that's the MCP client's job)
 DANGEROUS_PATTERNS = [
-    re.compile(r"\brm\s+-rf\s+/\b"),          # rm -rf /
-    re.compile(r"\bmkfs\b"),                     # filesystem formatting
-    re.compile(r"\bdd\s+if=.*of=/dev/\b"),      # raw disk writes
-    re.compile(r":\(\)\{.*\|.*&\s*\};:"),        # fork bomb
-    re.compile(r">\s*/dev/sd[a-z]"),             # redirect to disk device
-    re.compile(r"\bchmod\s+-R\s+777\s+/\b"),    # chmod 777 /
+    re.compile(r"\brm\s+-rf\s+/\b"),  # rm -rf /
+    re.compile(r"\bmkfs\b"),  # filesystem formatting
+    re.compile(r"\bdd\s+if=.*of=/dev/\b"),  # raw disk writes
+    re.compile(r":\(\)\{.*\|.*&\s*\};:"),  # fork bomb
+    re.compile(r">\s*/dev/sd[a-z]"),  # redirect to disk device
+    re.compile(r"\bchmod\s+-R\s+777\s+/\b"),  # chmod 777 /
 ]
 
 
@@ -80,8 +79,7 @@ def sanitize_model_id(model_id: str) -> tuple[bool, str]:
     valid_pattern = re.compile(r"^[a-zA-Z0-9_\-\.]+(/[a-zA-Z0-9_\-\.]+)*$")
     if not valid_pattern.match(model_id):
         return False, (
-            f"Invalid model ID format: '{model_id}'. "
-            "Expected pattern like 'org/model-name' or 'model-name'."
+            f"Invalid model ID format: '{model_id}'. Expected pattern like 'org/model-name' or 'model-name'."
         )
 
     return True, ""
@@ -90,6 +88,7 @@ def sanitize_model_id(model_id: str) -> tuple[bool, str]:
 # ============================================================================
 # 2. Rate Limiting
 # ============================================================================
+
 
 class RateLimiter:
     """Simple token bucket rate limiter."""
@@ -104,9 +103,7 @@ class RateLimiter:
         now = time.monotonic()
 
         # Evict expired entries outside the window
-        self._requests = [
-            t for t in self._requests if now - t < self._window
-        ]
+        self._requests = [t for t in self._requests if now - t < self._window]
 
         if len(self._requests) >= self._max_requests:
             wait_time = self._window - (now - self._requests[0])
@@ -132,15 +129,14 @@ model_load_limiter = RateLimiter(max_requests=10, window_seconds=300)
 # 3. Audit Logging
 # ============================================================================
 
+
 class AuditLogger:
     """Structured audit logger for security-relevant events."""
 
     def __init__(self) -> None:
         self._logger = logging.getLogger("code-execution-mcp.audit")
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s [AUDIT] %(message)s'
-        ))
+        handler.setFormatter(logging.Formatter("%(asctime)s [AUDIT] %(message)s"))
         if not self._logger.handlers:
             self._logger.addHandler(handler)
         self._logger.setLevel(logging.INFO)
@@ -149,13 +145,17 @@ class AuditLogger:
         """Log a command execution event."""
         self._logger.info(
             "user=%s session=%d action=execute_command command=%.200s",
-            user, session, command,
+            user,
+            session,
+            command,
         )
 
     def log_model_load(self, model_id: str, backend: str) -> None:
         """Log a model load event."""
         self._logger.info(
-            "action=model_load model_id=%s backend=%s", model_id, backend,
+            "action=model_load model_id=%s backend=%s",
+            model_id,
+            backend,
         )
 
     def log_model_unload(self, model_id: str) -> None:
@@ -165,7 +165,8 @@ class AuditLogger:
     def log_rate_limit(self, limiter_name: str) -> None:
         """Log a rate limit hit."""
         self._logger.warning(
-            "action=rate_limit_hit limiter=%s", limiter_name,
+            "action=rate_limit_hit limiter=%s",
+            limiter_name,
         )
 
     def log_warning(self, message: str) -> None:
@@ -180,20 +181,23 @@ audit = AuditLogger()
 # 4. Resource Limits
 # ============================================================================
 
+
 class ResourceLimits:
     """Enforce resource limits on code execution."""
 
-    MAX_OUTPUT_SIZE: int = 5 * 1024 * 1024   # 5MB max output
-    MAX_FILE_SIZE: int = 100 * 1024 * 1024    # 100MB max file write
+    MAX_OUTPUT_SIZE: int = 5 * 1024 * 1024  # 5MB max output
+    MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB max file write
 
     @staticmethod
     def get_memory_usage_mb() -> float:
         """Get current process memory usage in MB."""
         try:
             import resource as _resource
+
             # ru_maxrss is in KB on Linux, bytes on macOS
             usage = _resource.getrusage(_resource.RUSAGE_SELF)
             import sys
+
             if sys.platform == "darwin":
                 return usage.ru_maxrss / (1024 * 1024)
             else:
@@ -223,11 +227,10 @@ class ResourceLimits:
         try:
             stat = os.statvfs(path)
             free_bytes = stat.f_bavail * stat.f_frsize
-            free_gb = free_bytes / (1024 ** 3)
+            free_gb = free_bytes / (1024**3)
             if free_gb < min_gb:
                 return False, (
-                    f"Low disk space: {free_gb:.2f} GB available at '{path}', "
-                    f"minimum required: {min_gb:.1f} GB."
+                    f"Low disk space: {free_gb:.2f} GB available at '{path}', minimum required: {min_gb:.1f} GB."
                 )
             return True, f"Disk space OK: {free_gb:.2f} GB available at '{path}'."
         except (OSError, AttributeError) as e:
@@ -247,10 +250,10 @@ SECRET_PATTERNS = [
         r'(?i)(api[_-]?key|secret[_-]?key|password|token|bearer)\s*[=:]\s*["\']?([^\s"\']{8,})',
         re.IGNORECASE,
     ),
-    re.compile(r'(?i)-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----'),
-    re.compile(r'ghp_[a-zA-Z0-9]{36}'),      # GitHub personal access token
-    re.compile(r'sk-[a-zA-Z0-9]{32,}'),        # OpenAI API key pattern
-    re.compile(r'hf_[a-zA-Z0-9]{34}'),         # HuggingFace token
+    re.compile(r"(?i)-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----"),
+    re.compile(r"ghp_[a-zA-Z0-9]{36}"),  # GitHub personal access token
+    re.compile(r"sk-[a-zA-Z0-9]{32,}"),  # OpenAI API key pattern
+    re.compile(r"hf_[a-zA-Z0-9]{34}"),  # HuggingFace token
 ]
 
 
@@ -263,9 +266,7 @@ def scan_output_for_secrets(output: str) -> list[str]:
     for pattern in SECRET_PATTERNS:
         matches = pattern.findall(output)
         if matches:
-            warnings.append(
-                f"Potential secret detected matching pattern: {pattern.pattern}"
-            )
+            warnings.append(f"Potential secret detected matching pattern: {pattern.pattern}")
     return warnings
 
 

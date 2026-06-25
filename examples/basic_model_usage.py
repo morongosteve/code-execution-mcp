@@ -14,7 +14,7 @@ load_result = {
         "backend": "api",
         "max_new_tokens": 256,
         "temperature": 0.7,
-    }
+    },
 }
 
 # 2. Generate text
@@ -23,7 +23,7 @@ generate_result = {
     "args": {
         "prompt": "Explain quantum computing in simple terms:",
         "model": "meta-llama/Meta-Llama-3-8B-Instruct",
-    }
+    },
 }
 
 # 3. Load embeddings
@@ -32,7 +32,7 @@ embed_result = {
     "args": {
         "model_name": "sentence-transformers/all-mpnet-base-v2",
         "backend": "local",
-    }
+    },
 }
 
 # 4. Generate embeddings
@@ -41,7 +41,7 @@ embeddings_result = {
     "args": {
         "texts_json": '["Hello world", "How are you?"]',
         "embed_type": "documents",
-    }
+    },
 }
 
 print("See README.md for full tool documentation.")

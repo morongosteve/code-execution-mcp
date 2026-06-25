@@ -7,16 +7,14 @@ environment.
 
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 import huggingface_tools as ht
-
 
 # ---------------------------------------------------------------------------
 # Helper to run async tool functions
 # ---------------------------------------------------------------------------
+
 
 def run(coro):
     """Run an async coroutine to completion and return the result."""
@@ -107,9 +105,8 @@ class TestLoadHFModel:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(
-                return_value=mock_endpoint
-            )
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(return_value=mock_endpoint)
             result = run(ht.load_hf_model(repo_id="org/model", backend="api", ttl=600))
 
         assert "Loaded model 'org/model'" in result
@@ -124,6 +121,7 @@ class TestLoadHFModel:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
+
             sys.modules["langchain_huggingface"].HuggingFacePipeline = MagicMock()
             sys.modules["langchain_huggingface"].HuggingFacePipeline.from_model_id = MagicMock(
                 return_value=mock_pipeline
@@ -140,9 +138,8 @@ class TestLoadHFModel:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(
-                return_value=mock_endpoint
-            )
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(return_value=mock_endpoint)
             with patch("huggingface_tools._get_hf_token", return_value=None):
                 result = run(ht.load_hf_model(repo_id="org/m2", backend="api", ttl=0))
 
@@ -165,9 +162,8 @@ class TestLoadHFModel:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(
-                return_value=MagicMock()
-            )
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(return_value=MagicMock())
             result = run(ht.load_hf_model(repo_id="new/model", backend="api"))
 
         assert "Loaded model" in result
@@ -178,9 +174,8 @@ class TestLoadHFModel:
         model_reg, _ = reset_global_registries
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(
-                return_value=MagicMock()
-            )
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(return_value=MagicMock())
             result = run(ht.load_hf_model(repo_id="org/m", alias="my-alias", backend="api"))
 
         assert "my-alias" in model_reg
@@ -201,12 +196,9 @@ class TestLoadHFChatModel:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(
-                return_value=MagicMock()
-            )
-            sys.modules["langchain_huggingface"].ChatHuggingFace = MagicMock(
-                return_value=MagicMock()
-            )
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(return_value=MagicMock())
+            sys.modules["langchain_huggingface"].ChatHuggingFace = MagicMock(return_value=MagicMock())
             result = run(ht.load_hf_chat_model(repo_id="org/chat-model"))
 
         assert "Loaded chat model" in result
@@ -226,15 +218,10 @@ class TestLoadHFChatModel:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(
-                return_value=MagicMock()
-            )
-            sys.modules["langchain_huggingface"].ChatHuggingFace = MagicMock(
-                return_value=MagicMock()
-            )
-            result = run(ht.load_hf_chat_model(
-                repo_id="org/chat-m", alias="my-chat", ttl=7200
-            ))
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(return_value=MagicMock())
+            sys.modules["langchain_huggingface"].ChatHuggingFace = MagicMock(return_value=MagicMock())
+            result = run(ht.load_hf_chat_model(repo_id="org/chat-m", alias="my-chat", ttl=7200))
 
         assert "my-chat" in model_reg
         assert "TTL: 7200s" in result
@@ -250,12 +237,9 @@ class TestLoadHFChatModel:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(
-                return_value=MagicMock()
-            )
-            sys.modules["langchain_huggingface"].ChatHuggingFace = MagicMock(
-                return_value=MagicMock()
-            )
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpoint = MagicMock(return_value=MagicMock())
+            sys.modules["langchain_huggingface"].ChatHuggingFace = MagicMock(return_value=MagicMock())
             result = run(ht.load_hf_chat_model(repo_id="org/chat-m2", ttl=0))
 
         assert f"TTL: {ht.DEFAULT_TTL_SECONDS}s" in result
@@ -275,8 +259,13 @@ class TestLoadHFEmbeddings:
 
     def test_embedding_already_loaded(self, reset_global_registries):
         _, emb_reg = reset_global_registries
-        emb_reg.put("sentence-transformers/all-mpnet-base-v2", "obj", ttl=3600,
-                     backend="local", repo_id="sentence-transformers/all-mpnet-base-v2")
+        emb_reg.put(
+            "sentence-transformers/all-mpnet-base-v2",
+            "obj",
+            ttl=3600,
+            backend="local",
+            repo_id="sentence-transformers/all-mpnet-base-v2",
+        )
 
         result = run(ht.load_hf_embeddings())
         assert "already loaded" in result
@@ -286,13 +275,14 @@ class TestLoadHFEmbeddings:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEmbeddings = MagicMock(
-                return_value=MagicMock()
+
+            sys.modules["langchain_huggingface"].HuggingFaceEmbeddings = MagicMock(return_value=MagicMock())
+            result = run(
+                ht.load_hf_embeddings(
+                    model_name="sentence-transformers/all-MiniLM-L6-v2",
+                    backend="local",
+                )
             )
-            result = run(ht.load_hf_embeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2",
-                backend="local",
-            ))
 
         assert "Loaded embedding model" in result
         assert "locally" in result
@@ -304,13 +294,14 @@ class TestLoadHFEmbeddings:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEndpointEmbeddings = MagicMock(
-                return_value=MagicMock()
+
+            sys.modules["langchain_huggingface"].HuggingFaceEndpointEmbeddings = MagicMock(return_value=MagicMock())
+            result = run(
+                ht.load_hf_embeddings(
+                    model_name="sentence-transformers/all-MiniLM-L6-v2",
+                    backend="api",
+                )
             )
-            result = run(ht.load_hf_embeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2",
-                backend="api",
-            ))
 
         assert "Loaded embedding model" in result
         assert "API" in result
@@ -327,12 +318,15 @@ class TestLoadHFEmbeddings:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEmbeddings = MagicMock(
-                return_value=MagicMock()
+
+            sys.modules["langchain_huggingface"].HuggingFaceEmbeddings = MagicMock(return_value=MagicMock())
+            result = run(
+                ht.load_hf_embeddings(
+                    model_name="st/model",
+                    alias="my-emb",
+                    backend="local",
+                )
             )
-            result = run(ht.load_hf_embeddings(
-                model_name="st/model", alias="my-emb", backend="local",
-            ))
 
         assert "my-emb" in emb_reg
         assert "Loaded embedding model" in result
@@ -342,12 +336,15 @@ class TestLoadHFEmbeddings:
 
         with patch.dict("sys.modules", {"langchain_huggingface": MagicMock()}):
             import sys
-            sys.modules["langchain_huggingface"].HuggingFaceEmbeddings = MagicMock(
-                return_value=MagicMock()
+
+            sys.modules["langchain_huggingface"].HuggingFaceEmbeddings = MagicMock(return_value=MagicMock())
+            result = run(
+                ht.load_hf_embeddings(
+                    model_name="st/model2",
+                    backend="local",
+                    ttl=0,
+                )
             )
-            result = run(ht.load_hf_embeddings(
-                model_name="st/model2", backend="local", ttl=0,
-            ))
 
         assert f"TTL: {ht.DEFAULT_TTL_SECONDS}s" in result
 
@@ -461,16 +458,21 @@ class TestHFChat:
         model_reg, _ = reset_global_registries
         model_reg.put("m1", MagicMock(), ttl=3600, backend="api", repo_id="r/1")
 
-        result = run(ht.hf_chat(
-            messages_json='[{"role":"user","content":"hi"}]',
-            model="missing",
-        ))
+        result = run(
+            ht.hf_chat(
+                messages_json='[{"role":"user","content":"hi"}]',
+                model="missing",
+            )
+        )
         assert "not found" in result
 
-    @patch.dict("sys.modules", {
-        "langchain_core": MagicMock(),
-        "langchain_core.messages": MagicMock(),
-    })
+    @patch.dict(
+        "sys.modules",
+        {
+            "langchain_core": MagicMock(),
+            "langchain_core.messages": MagicMock(),
+        },
+    )
     def test_chat_success_with_content_attribute(self, reset_global_registries):
         model_reg, _ = reset_global_registries
         mock_llm = MagicMock()
@@ -479,16 +481,21 @@ class TestHFChat:
         mock_llm.invoke.return_value = response_obj
         model_reg.put("chat", mock_llm, ttl=3600, backend="api", repo_id="r/c")
 
-        result = run(ht.hf_chat(
-            messages_json='[{"role":"user","content":"hello"}]',
-            model="chat",
-        ))
+        result = run(
+            ht.hf_chat(
+                messages_json='[{"role":"user","content":"hello"}]',
+                model="chat",
+            )
+        )
         assert result == "Chat response"
 
-    @patch.dict("sys.modules", {
-        "langchain_core": MagicMock(),
-        "langchain_core.messages": MagicMock(),
-    })
+    @patch.dict(
+        "sys.modules",
+        {
+            "langchain_core": MagicMock(),
+            "langchain_core.messages": MagicMock(),
+        },
+    )
     def test_chat_with_multiple_roles(self, reset_global_registries):
         """Verify system, user, and assistant roles are accepted."""
         model_reg, _ = reset_global_registries
@@ -496,20 +503,25 @@ class TestHFChat:
         mock_llm.invoke.return_value = "multi-role-response"
         model_reg.put("chat", mock_llm, ttl=3600, backend="api", repo_id="r/c")
 
-        messages = json.dumps([
-            {"role": "system", "content": "You are helpful"},
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi there"},
-            {"role": "user", "content": "How are you?"},
-        ])
-        result = run(ht.hf_chat(messages_json=messages, model="chat"))
+        messages = json.dumps(
+            [
+                {"role": "system", "content": "You are helpful"},
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant", "content": "Hi there"},
+                {"role": "user", "content": "How are you?"},
+            ]
+        )
+        run(ht.hf_chat(messages_json=messages, model="chat"))
         # Should invoke the model with the message objects
         mock_llm.invoke.assert_called_once()
 
-    @patch.dict("sys.modules", {
-        "langchain_core": MagicMock(),
-        "langchain_core.messages": MagicMock(),
-    })
+    @patch.dict(
+        "sys.modules",
+        {
+            "langchain_core": MagicMock(),
+            "langchain_core.messages": MagicMock(),
+        },
+    )
     def test_chat_invoke_error(self, reset_global_registries):
         """Errors during invoke should be caught and returned."""
         model_reg, _ = reset_global_registries
@@ -517,10 +529,12 @@ class TestHFChat:
         mock_llm.invoke.side_effect = RuntimeError("model crashed")
         model_reg.put("chat", mock_llm, ttl=3600, backend="api", repo_id="r/c")
 
-        result = run(ht.hf_chat(
-            messages_json='[{"role":"user","content":"hello"}]',
-            model="chat",
-        ))
+        result = run(
+            ht.hf_chat(
+                messages_json='[{"role":"user","content":"hello"}]',
+                model="chat",
+            )
+        )
         assert "Error in chat" in result
 
 
@@ -548,10 +562,12 @@ class TestHFEmbed:
         mock_emb = MagicMock()
         emb_reg.put("emb", mock_emb, ttl=3600, backend="local", repo_id="r/e")
 
-        result = run(ht.hf_embed(
-            texts_json='["a", "b"]',
-            embed_type="query",
-        ))
+        result = run(
+            ht.hf_embed(
+                texts_json='["a", "b"]',
+                embed_type="query",
+            )
+        )
         assert "exactly one text" in result
 
     def test_model_not_found(self, reset_global_registries):
@@ -578,11 +594,13 @@ class TestHFEmbed:
         mock_emb.embed_query.return_value = [0.1, 0.2, 0.3, 0.4]
         emb_reg.put("emb", mock_emb, ttl=3600, backend="local", repo_id="r/e")
 
-        result = run(ht.hf_embed(
-            texts_json='["single query"]',
-            embed_type="query",
-            model="emb",
-        ))
+        result = run(
+            ht.hf_embed(
+                texts_json='["single query"]',
+                embed_type="query",
+                model="emb",
+            )
+        )
         parsed = json.loads(result)
         assert parsed["dimensions"] == 4
         assert parsed["embedding"] == [0.1, 0.2, 0.3, 0.4]
@@ -691,10 +709,12 @@ class TestHFPipelineTask:
         mock_pipeline_fn = MagicMock(return_value=mock_pipe)
 
         with patch.dict("sys.modules", {"transformers": MagicMock(pipeline=mock_pipeline_fn)}):
-            result = run(ht.hf_pipeline_task(
-                task="sentiment-analysis",
-                input_text="I love this!",
-            ))
+            result = run(
+                ht.hf_pipeline_task(
+                    task="sentiment-analysis",
+                    input_text="I love this!",
+                )
+            )
 
         parsed = json.loads(result)
         assert parsed[0]["label"] == "POSITIVE"
@@ -705,11 +725,13 @@ class TestHFPipelineTask:
         mock_pipeline_fn = MagicMock(return_value=mock_pipe)
 
         with patch.dict("sys.modules", {"transformers": MagicMock(pipeline=mock_pipeline_fn)}):
-            result = run(ht.hf_pipeline_task(
-                task="summarization",
-                input_text="Long text...",
-                model="facebook/bart-large-cnn",
-            ))
+            result = run(
+                ht.hf_pipeline_task(
+                    task="summarization",
+                    input_text="Long text...",
+                    model="facebook/bart-large-cnn",
+                )
+            )
 
         parsed = json.loads(result)
         assert "summary_text" in parsed[0]
@@ -757,14 +779,17 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter([]))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
+
             sys.modules["datasets"].load_dataset.return_value = mock_ds
 
-            result = run(ht.hf_dataset_info(
-                dataset_name="test/ds",
-                num_rows=999,
-            ))
+            result = run(
+                ht.hf_dataset_info(
+                    dataset_name="test/ds",
+                    num_rows=999,
+                )
+            )
             parsed = json.loads(result)
             assert parsed["max_rows_allowed"] == ht.MAX_DATASET_PREVIEW_ROWS
 
@@ -773,14 +798,17 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter([{"col": "val"}]))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
+
             sys.modules["datasets"].load_dataset.return_value = mock_ds
 
-            result = run(ht.hf_dataset_info(
-                dataset_name="test/ds",
-                num_rows=-5,
-            ))
+            result = run(
+                ht.hf_dataset_info(
+                    dataset_name="test/ds",
+                    num_rows=-5,
+                )
+            )
             parsed = json.loads(result)
             assert parsed["num_samples_shown"] <= 1
 
@@ -797,8 +825,9 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter([{"text": long_text}]))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
+
             sys.modules["datasets"].load_dataset.return_value = mock_ds
             result = run(ht.hf_dataset_info(dataset_name="test/ds", num_rows=1))
 
@@ -810,9 +839,7 @@ class TestHFDatasetInfo:
     def test_gated_access_error(self, reset_global_registries):
         """Gated dataset should produce a clear error message."""
         mock_datasets = MagicMock()
-        mock_datasets.load_dataset.side_effect = ValueError(
-            "This dataset is gated and requires access"
-        )
+        mock_datasets.load_dataset.side_effect = ValueError("This dataset is gated and requires access")
 
         with patch.dict("sys.modules", {"datasets": mock_datasets}):
             result = run(ht.hf_dataset_info(dataset_name="gated/dataset"))
@@ -838,8 +865,9 @@ class TestHFDatasetInfo:
         mock_ds = MagicMock()
         mock_ds.__iter__ = MagicMock(return_value=iter(rows))
 
-        with patch.dict("sys.modules", {"datasets": MagicMock()}) as mods:
+        with patch.dict("sys.modules", {"datasets": MagicMock()}):
             import sys
+
             sys.modules["datasets"].load_dataset.return_value = mock_ds
             result = run(ht.hf_dataset_info(dataset_name="test/ds", num_rows=5))
 
@@ -868,11 +896,14 @@ class TestLoadPeftModel:
 
     def test_peft_import_error(self, reset_global_registries):
         """Missing peft/torch dependency gives clear error."""
-        with patch.dict("sys.modules", {
-            "transformers": None,
-            "peft": None,
-            "torch": None,
-        }):
+        with patch.dict(
+            "sys.modules",
+            {
+                "transformers": None,
+                "peft": None,
+                "torch": None,
+            },
+        ):
             result = run(ht.load_peft_model(base_model_id="base/m", adapter_id="adapter"))
         assert "Missing dependency" in result or "Error" in result
 
@@ -880,9 +911,13 @@ class TestLoadPeftModel:
         model_reg, _ = reset_global_registries
         model_reg.put("my-peft", "obj", ttl=3600, backend="local-peft", repo_id="base/m")
 
-        result = run(ht.load_peft_model(
-            base_model_id="base/m", adapter_id="adapter", alias="my-peft",
-        ))
+        result = run(
+            ht.load_peft_model(
+                base_model_id="base/m",
+                adapter_id="adapter",
+                alias="my-peft",
+            )
+        )
         assert "already loaded" in result
 
 
@@ -903,11 +938,13 @@ class TestGenerateImage:
         mock_hf_hub.InferenceClient.return_value = mock_client
 
         with patch.dict("sys.modules", {"huggingface_hub": mock_hf_hub}):
-            result = run(ht.generate_image(
-                prompt="A cat in space",
-                backend="api",
-                output_path="/tmp/test_img.png",
-            ))
+            result = run(
+                ht.generate_image(
+                    prompt="A cat in space",
+                    backend="api",
+                    output_path="/tmp/test_img.png",
+                )
+            )
 
         assert "Image generated" in result
         assert "API" in result
@@ -1007,10 +1044,13 @@ class TestSetupRagPipeline:
         model_reg.put("llm", MagicMock(), ttl=3600, backend="api", repo_id="r/l")
         emb_reg.put("emb", MagicMock(), ttl=3600, backend="local", repo_id="r/e")
 
-        with patch.dict("sys.modules", {
-            "langchain": None,
-            "langchain.text_splitter": None,
-        }):
+        with patch.dict(
+            "sys.modules",
+            {
+                "langchain": None,
+                "langchain.text_splitter": None,
+            },
+        ):
             result = run(ht.setup_rag_pipeline('["doc text"]'))
 
         assert "Missing dependency" in result or "Error" in result
@@ -1044,17 +1084,22 @@ class TestSetupRagPipeline:
 
         mock_lc_schema = MagicMock()
 
-        with patch.dict("sys.modules", {
-            "langchain": MagicMock(),
-            "langchain.text_splitter": mock_lc_text_splitter,
-            "langchain_community": MagicMock(),
-            "langchain_community.vectorstores": mock_lc_community_vs,
-            "langchain.chains": mock_lc_chains,
-            "langchain.schema": mock_lc_schema,
-        }):
-            result = run(ht.setup_rag_pipeline(
-                documents_json='["Doc 1", "Doc 2"]',
-            ))
+        with patch.dict(
+            "sys.modules",
+            {
+                "langchain": MagicMock(),
+                "langchain.text_splitter": mock_lc_text_splitter,
+                "langchain_community": MagicMock(),
+                "langchain_community.vectorstores": mock_lc_community_vs,
+                "langchain.chains": mock_lc_chains,
+                "langchain.schema": mock_lc_schema,
+            },
+        ):
+            result = run(
+                ht.setup_rag_pipeline(
+                    documents_json='["Doc 1", "Doc 2"]',
+                )
+            )
 
         assert "RAG pipeline created" in result
         assert "Documents ingested: 2" in result
@@ -1175,6 +1220,7 @@ class TestGetHfToken:
     @patch.dict("os.environ", {"HF_TOKEN": "hf_alt_token"}, clear=False)
     def test_falls_back_to_hf_token(self):
         import os
+
         orig = os.environ.pop("HUGGINGFACE_TOKEN", None)
         try:
             assert ht._get_hf_token() == "hf_alt_token"

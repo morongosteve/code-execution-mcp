@@ -12,7 +12,7 @@ import io
 import os
 import re
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -51,35 +51,36 @@ class TestPromptPatterns:
         re.compile(r"bash-\d+\.\d+\$ ?$"),
     ]
 
-    @pytest.mark.parametrize("line,expected_match", [
-        # venv-style prompts
-        ("(venv) user@host:~/project$ ", True),
-        ("(venv) root@abc:/tmp# ", True),
-        ("(venv) $", True),  # ".+" matches the space before $
-        # root@container prompts
-        ("root@container:~# ", True),
-        ("root@abc123:/home/user# ", True),
-        ("root@host:/var/log#", True),
-        # user@host prompts
-        ("user@hostname:~/dir$ ", True),
-        ("deploy@prod-server:/opt/app$ ", True),
-        ("user.name@host:~$", True),
-        # bash version prompts
-        ("bash-3.2$ ", True),
-        ("bash-5.1$ ", True),
-        ("bash-5.1$", True),
-        # Non-matching lines
-        ("ls -la", False),
-        ("total 42", False),
-        ("", False),
-        ("Processing...", False),
-        ("echo hello", False),
-    ])
+    @pytest.mark.parametrize(
+        "line,expected_match",
+        [
+            # venv-style prompts
+            ("(venv) user@host:~/project$ ", True),
+            ("(venv) root@abc:/tmp# ", True),
+            ("(venv) $", True),  # ".+" matches the space before $
+            # root@container prompts
+            ("root@container:~# ", True),
+            ("root@abc123:/home/user# ", True),
+            ("root@host:/var/log#", True),
+            # user@host prompts
+            ("user@hostname:~/dir$ ", True),
+            ("deploy@prod-server:/opt/app$ ", True),
+            ("user.name@host:~$", True),
+            # bash version prompts
+            ("bash-3.2$ ", True),
+            ("bash-5.1$ ", True),
+            ("bash-5.1$", True),
+            # Non-matching lines
+            ("ls -la", False),
+            ("total 42", False),
+            ("", False),
+            ("Processing...", False),
+            ("echo hello", False),
+        ],
+    )
     def test_prompt_pattern_matching(self, line, expected_match):
         matched = any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS)
-        assert matched == expected_match, (
-            f"Line {line!r}: expected match={expected_match}, got {matched}"
-        )
+        assert matched == expected_match, f"Line {line!r}: expected match={expected_match}, got {matched}"
 
     def test_venv_prompt_with_different_users(self):
         """Various venv-style prompts should all match."""
@@ -89,9 +90,7 @@ class TestPromptPatterns:
             "(venv) a $",
         ]
         for line in lines:
-            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), (
-                f"Expected match for: {line!r}"
-            )
+            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), f"Expected match for: {line!r}"
 
     def test_root_prompt_variations(self):
         """Various root prompts should match."""
@@ -100,9 +99,7 @@ class TestPromptPatterns:
             "root@a-b-c:/home/user/dir# ",
         ]
         for line in lines:
-            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), (
-                f"Expected match for: {line!r}"
-            )
+            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), f"Expected match for: {line!r}"
 
     def test_bash_version_prompt_variations(self):
         """Different bash versions."""
@@ -112,9 +109,7 @@ class TestPromptPatterns:
             "bash-3.0$ ",
         ]
         for line in lines:
-            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), (
-                f"Expected match for: {line!r}"
-            )
+            assert any(pat.search(line.strip()) for pat in self.PROMPT_PATTERNS), f"Expected match for: {line!r}"
 
 
 class TestDialogPatterns:
@@ -127,30 +122,31 @@ class TestDialogPatterns:
         re.compile(r"\?\s*$"),
     ]
 
-    @pytest.mark.parametrize("line,expected_match", [
-        # Y/N patterns
-        ("Continue? [Y/N]", True),
-        ("Proceed (y/n)", True),
-        ("Do you want to continue? [yes/no]", True),
-        ("YES/NO", True),
-        # Colon at end
-        ("Enter password:", True),
-        ("Username: ", True),
-        ("Select option:  ", True),
-        # Question mark at end
-        ("Are you sure?", True),
-        ("Do you want to proceed? ", True),
-        # Non-matching
-        ("file.txt", False),
-        ("Processing: 50% done ... still going", False),
-        ("Y/N is in the middle but not a prompt style", True),  # Y/N anywhere
-        ("", False),
-    ])
+    @pytest.mark.parametrize(
+        "line,expected_match",
+        [
+            # Y/N patterns
+            ("Continue? [Y/N]", True),
+            ("Proceed (y/n)", True),
+            ("Do you want to continue? [yes/no]", True),
+            ("YES/NO", True),
+            # Colon at end
+            ("Enter password:", True),
+            ("Username: ", True),
+            ("Select option:  ", True),
+            # Question mark at end
+            ("Are you sure?", True),
+            ("Do you want to proceed? ", True),
+            # Non-matching
+            ("file.txt", False),
+            ("Processing: 50% done ... still going", False),
+            ("Y/N is in the middle but not a prompt style", True),  # Y/N anywhere
+            ("", False),
+        ],
+    )
     def test_dialog_pattern_matching(self, line, expected_match):
         matched = any(pat.search(line.strip()) for pat in self.DIALOG_PATTERNS)
-        assert matched == expected_match, (
-            f"Line {line!r}: expected match={expected_match}, got {matched}"
-        )
+        assert matched == expected_match, f"Line {line!r}: expected match={expected_match}, got {matched}"
 
     def test_case_insensitive_yn(self):
         """Y/N matching should be case-insensitive."""
@@ -460,7 +456,7 @@ class TestPrepareState:
         assert tool.state is None
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state())
+        loop.run_until_complete(tool.prepare_state())
         loop.close()
 
         assert tool.state is not None
@@ -473,7 +469,7 @@ class TestPrepareState:
         tool.state = State(shells={0: mock_shell})
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state())
+        loop.run_until_complete(tool.prepare_state())
         loop.close()
 
         # Existing shells should be preserved
@@ -487,7 +483,7 @@ class TestPrepareState:
         tool.state = State(shells={0: mock_shell_0, 1: mock_shell_1})
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state(reset=True, session=0))
+        loop.run_until_complete(tool.prepare_state(reset=True, session=0))
         loop.close()
 
         # Session 0 should have been closed and removed
@@ -502,7 +498,7 @@ class TestPrepareState:
         tool.state = State(shells={0: mock_shell_0, 1: mock_shell_1})
 
         loop = asyncio.new_event_loop()
-        state = loop.run_until_complete(tool.prepare_state(reset=True, session=None))
+        loop.run_until_complete(tool.prepare_state(reset=True, session=None))
         loop.close()
 
         # All sessions should be closed
@@ -518,7 +514,7 @@ class TestPrepareState:
 
         loop = asyncio.new_event_loop()
         # Reset session 5, which doesn't exist -- should be no-op
-        state = loop.run_until_complete(tool.prepare_state(reset=True, session=5))
+        loop.run_until_complete(tool.prepare_state(reset=True, session=5))
         loop.close()
 
         assert 0 in tool.state.shells  # session 0 untouched

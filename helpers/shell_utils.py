@@ -1,5 +1,6 @@
 import re
 
+
 def clean_string(input_string):
     # Remove ANSI escape codes
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
@@ -9,9 +10,9 @@ def clean_string(input_string):
     cleaned = cleaned.replace("\x00", "")
 
     # remove ipython \r\r\n> sequences from the start
-    cleaned = re.sub(r'^[ \r]*(?:\r*\n>[ \r]*)*', '', cleaned)
+    cleaned = re.sub(r"^[ \r]*(?:\r*\n>[ \r]*)*", "", cleaned)
     # also remove any amount of '> ' sequences from the start
-    cleaned = re.sub(r'^(>\s*)+', '', cleaned)
+    cleaned = re.sub(r"^(>\s*)+", "", cleaned)
 
     # Replace '\r\n' with '\n'
     cleaned = cleaned.replace("\r\n", "\n")
@@ -26,8 +27,6 @@ def clean_string(input_string):
         # Handle carriage returns '\r' by splitting and taking the last part
         parts = [part for part in lines[i].split("\r") if part.strip()]
         if parts:
-            lines[i] = parts[
-                -1
-            ].rstrip()  # Overwrite with the last part after the last '\r'
+            lines[i] = parts[-1].rstrip()  # Overwrite with the last part after the last '\r'
 
     return "\n".join(lines)

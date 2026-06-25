@@ -1,43 +1,45 @@
 #!/usr/bin/env python3
 import os
 import sys
+
 from fastmcp import FastMCP
+
 from code_execution_tool import CodeExecutionTool
+from huggingface_tools import (
+    generate_image,
+    gpu_status,
+    hf_audio_transcribe,
+    hf_batch_generate,
+    hf_benchmark,
+    hf_chat,
+    hf_dataset_info,
+    hf_embed,
+    hf_finetune,
+    hf_generate,
+    hf_pipeline_task,
+    hf_text_to_speech,
+    list_models,
+    load_hf_chat_model,
+    load_hf_embeddings,
+    load_hf_model,
+    load_peft_model,
+    load_vllm_model,
+    model_download_status,
+    rag_query,
+    restore_registry_state,
+    save_registry_state,
+    setup_rag_pipeline,
+    unload_model,
+)
 from security import (
-    validate_command,
     audit,
     execution_limiter,
     model_load_limiter,
-    scan_output_for_secrets,
-    sanitize_model_id,
-    resource_limits,
     redact_secrets,
-)
-from huggingface_tools import (
-    list_models,
-    load_hf_model,
-    load_hf_chat_model,
-    load_hf_embeddings,
-    hf_generate,
-    hf_chat,
-    hf_embed,
-    unload_model,
-    hf_pipeline_task,
-    hf_dataset_info,
-    load_peft_model,
-    generate_image,
-    setup_rag_pipeline,
-    rag_query,
-    hf_batch_generate,
-    hf_finetune,
-    hf_benchmark,
-    load_vllm_model,
-    hf_audio_transcribe,
-    hf_text_to_speech,
-    gpu_status,
-    model_download_status,
-    save_registry_state,
-    restore_registry_state,
+    resource_limits,
+    sanitize_model_id,
+    scan_output_for_secrets,
+    validate_command,
 )
 
 # Helpers for debugging
@@ -53,7 +55,7 @@ mcp = FastMCP(
         f"text generation, chat, embeddings, pipeline tasks, LoRA/PEFT adapters, "
         f"image generation via Diffusers, and RAG pipelines. Version: {version}"
     ),
-    version=version
+    version=version,
 )
 
 # Get configuration from environment variables with defaults
@@ -75,7 +77,7 @@ code_tool = CodeExecutionTool(
     first_output_timeout=FIRST_OUTPUT_TIMEOUT,
     between_output_timeout=BETWEEN_OUTPUT_TIMEOUT,
     dialog_timeout=DIALOG_TIMEOUT,
-    max_exec_timeout=MAX_EXEC_TIMEOUT
+    max_exec_timeout=MAX_EXEC_TIMEOUT,
 )
 
 
@@ -84,7 +86,7 @@ async def execute_terminal(command: str, session: int = 0) -> str:
     try:
         # Enforce input size limit
         if len(command.encode()) > resource_limits.MAX_FILE_SIZE:
-            return f"Command exceeds maximum allowed size ({resource_limits.MAX_FILE_SIZE // (1024*1024)}MB)."
+            return f"Command exceeds maximum allowed size ({resource_limits.MAX_FILE_SIZE // (1024 * 1024)}MB)."
 
         # Rate limiting
         allowed, msg = execution_limiter.check()
@@ -105,7 +107,7 @@ async def execute_terminal(command: str, session: int = 0) -> str:
 
         # Truncate oversized output
         if len(result) > resource_limits.MAX_OUTPUT_SIZE:
-            result = result[:resource_limits.MAX_OUTPUT_SIZE] + "\n[Output truncated]"
+            result = result[: resource_limits.MAX_OUTPUT_SIZE] + "\n[Output truncated]"
 
         # Scan and redact secrets
         secret_warnings = scan_output_for_secrets(result)
@@ -123,7 +125,7 @@ async def execute_python(code: str, session: int = 0) -> str:
     try:
         # Enforce input size limit
         if len(code.encode()) > resource_limits.MAX_FILE_SIZE:
-            return f"Code exceeds maximum allowed size ({resource_limits.MAX_FILE_SIZE // (1024*1024)}MB)."
+            return f"Code exceeds maximum allowed size ({resource_limits.MAX_FILE_SIZE // (1024 * 1024)}MB)."
 
         # Rate limiting
         allowed, msg = execution_limiter.check()
@@ -139,7 +141,7 @@ async def execute_python(code: str, session: int = 0) -> str:
 
         # Truncate oversized output
         if len(result) > resource_limits.MAX_OUTPUT_SIZE:
-            result = result[:resource_limits.MAX_OUTPUT_SIZE] + "\n[Output truncated]"
+            result = result[: resource_limits.MAX_OUTPUT_SIZE] + "\n[Output truncated]"
 
         # Scan and redact secrets
         secret_warnings = scan_output_for_secrets(result)
@@ -171,6 +173,7 @@ async def reset_terminal(session: int = 0, reason: str | None = None) -> str:
 
 
 # --- HuggingFace + LangChain integration tools ---
+
 
 @mcp.tool()
 async def hf_list_models() -> str:
@@ -396,6 +399,7 @@ async def hf_preview_dataset(
 
 # --- LoRA / PEFT adapter support ---
 
+
 @mcp.tool()
 async def hf_load_peft_model(
     base_model_id: str,
@@ -438,13 +442,11 @@ async def hf_load_peft_model(
     # Audit log
     audit.log_model_load(model_id=f"{base_model_id}+{adapter_id}", backend="peft")
 
-    return await load_peft_model(
-        base_model_id, adapter_id, task, max_new_tokens,
-        temperature, alias, ttl, quantize
-    )
+    return await load_peft_model(base_model_id, adapter_id, task, max_new_tokens, temperature, alias, ttl, quantize)
 
 
 # --- Diffusers image generation ---
+
 
 @mcp.tool()
 async def hf_generate_image(
@@ -475,12 +477,12 @@ async def hf_generate_image(
         backend: 'api' for HF Inference API, 'local' for local diffusers pipeline
     """
     return await generate_image(
-        prompt, model_id, negative_prompt, num_inference_steps,
-        guidance_scale, width, height, output_path, backend
+        prompt, model_id, negative_prompt, num_inference_steps, guidance_scale, width, height, output_path, backend
     )
 
 
 # --- RAG pipeline tools ---
+
 
 @mcp.tool()
 async def hf_setup_rag(
@@ -509,8 +511,7 @@ async def hf_setup_rag(
         search_k: Number of documents to retrieve per query (default: 4)
     """
     return await setup_rag_pipeline(
-        documents_json, embedding_model, llm_model,
-        chunk_size, chunk_overlap, search_type, search_k
+        documents_json, embedding_model, llm_model, chunk_size, chunk_overlap, search_type, search_k
     )
 
 
@@ -531,6 +532,7 @@ async def hf_rag_query(
 
 
 # --- Batch Inference ---
+
 
 @mcp.tool()
 async def hf_batch_text_generate(
@@ -554,6 +556,7 @@ async def hf_batch_text_generate(
 
 
 # --- Fine-tuning ---
+
 
 @mcp.tool()
 async def hf_finetune_model(
@@ -597,12 +600,20 @@ async def hf_finetune_model(
     audit.log_model_load(model_id=base_model_id, backend="finetune")
 
     return await hf_finetune(
-        base_model_id, dataset_name, output_dir, num_epochs,
-        learning_rate, lora_r, lora_alpha, batch_size, max_seq_length
+        base_model_id,
+        dataset_name,
+        output_dir,
+        num_epochs,
+        learning_rate,
+        lora_r,
+        lora_alpha,
+        batch_size,
+        max_seq_length,
     )
 
 
 # --- Benchmarking ---
+
 
 @mcp.tool()
 async def hf_benchmark_model(
@@ -625,6 +636,7 @@ async def hf_benchmark_model(
 
 
 # --- vLLM / TGI Backend ---
+
 
 @mcp.tool()
 async def hf_load_vllm_model(
@@ -662,6 +674,7 @@ async def hf_load_vllm_model(
 
 
 # --- Audio Pipeline ---
+
 
 @mcp.tool()
 async def hf_transcribe_audio(
@@ -701,6 +714,7 @@ async def hf_speak_text(
 
 # --- GPU & Model Status ---
 
+
 @mcp.tool()
 async def hf_gpu_status() -> str:
     """Report GPU memory usage, available VRAM, and loaded model info.
@@ -729,6 +743,7 @@ async def hf_model_download_status(repo_id: str) -> str:
 
 
 # --- Model Registry Persistence ---
+
 
 @mcp.tool()
 async def hf_save_registry(path: str = ".model_registry_state.json") -> str:

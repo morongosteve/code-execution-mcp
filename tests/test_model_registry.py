@@ -384,14 +384,17 @@ class TestRegistryMaxConcurrentCap:
 
     def test_model_cap_is_five(self):
         from huggingface_tools import MAX_CONCURRENT_MODELS
+
         assert MAX_CONCURRENT_MODELS == 5
 
     def test_embedding_cap_is_three(self):
         from huggingface_tools import MAX_CONCURRENT_EMBEDDINGS
+
         assert MAX_CONCURRENT_EMBEDDINGS == 3
 
     def test_default_ttl_is_3600(self):
         from huggingface_tools import DEFAULT_TTL_SECONDS
+
         assert DEFAULT_TTL_SECONDS == 3600
 
     def test_cannot_exceed_max_without_eviction(self, fresh_registry):
@@ -411,10 +414,12 @@ class TestRegistryMaxConcurrentCap:
 
     def test_global_model_registry_has_cap_five(self):
         from huggingface_tools import _model_registry
+
         assert _model_registry._max_models == 5
 
     def test_global_embedding_registry_has_cap_three(self):
         from huggingface_tools import _embedding_registry
+
         assert _embedding_registry._max_models == 3
 
 

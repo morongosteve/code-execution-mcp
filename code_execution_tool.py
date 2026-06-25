@@ -24,17 +24,22 @@ class State:
 
 
 class CodeExecutionTool:
-
-    def __init__(self, executable: str | None = None, init_commands: list[str] | None = None,
-                 first_output_timeout: int = 30, between_output_timeout: int = 15,
-                 dialog_timeout: int = 5, max_exec_timeout: int = 180):
+    def __init__(
+        self,
+        executable: str | None = None,
+        init_commands: list[str] | None = None,
+        first_output_timeout: int = 30,
+        between_output_timeout: int = 15,
+        dialog_timeout: int = 5,
+        max_exec_timeout: int = 180,
+    ):
         self.executable = executable
         self.init_commands = init_commands or []
         self.default_timeouts = {
-            'first_output_timeout': first_output_timeout,
-            'between_output_timeout': between_output_timeout,
-            'dialog_timeout': dialog_timeout,
-            'max_exec_timeout': max_exec_timeout,
+            "first_output_timeout": first_output_timeout,
+            "between_output_timeout": between_output_timeout,
+            "dialog_timeout": dialog_timeout,
+            "max_exec_timeout": max_exec_timeout,
         }
         self.state: State | None = None
         self.log = Log()  # Minimal log placeholder
@@ -43,7 +48,7 @@ class CodeExecutionTool:
     def read_prompt(self, filename: str, **kwargs) -> str:
         filepath = os.path.join(self.prompts_dir, filename)
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 content = f.read()
             # Simple template replacement
             for key, value in kwargs.items():
@@ -101,9 +106,9 @@ class CodeExecutionTool:
             try:
                 await self.state.shells[session].send_command(command)
 
-                PrintStyle(
-                    background_color="white", font_color="#1B4F72", bold=True
-                ).print("Code execution output (local)")
+                PrintStyle(background_color="white", font_color="#1B4F72", bold=True).print(
+                    "Code execution output (local)"
+                )
 
                 return await self.get_terminal_output(session=session, prefix=prefix)
 
@@ -136,10 +141,10 @@ class CodeExecutionTool:
         prefix="",
     ):
         # Use default timeouts if not specified
-        first_output_timeout = first_output_timeout or self.default_timeouts['first_output_timeout']
-        between_output_timeout = between_output_timeout or self.default_timeouts['between_output_timeout']
-        dialog_timeout = dialog_timeout or self.default_timeouts['dialog_timeout']
-        max_exec_timeout = max_exec_timeout or self.default_timeouts['max_exec_timeout']
+        first_output_timeout = first_output_timeout or self.default_timeouts["first_output_timeout"]
+        between_output_timeout = between_output_timeout or self.default_timeouts["between_output_timeout"]
+        dialog_timeout = dialog_timeout or self.default_timeouts["dialog_timeout"]
+        max_exec_timeout = max_exec_timeout or self.default_timeouts["max_exec_timeout"]
 
         self.state = await self.prepare_state(session=session)
 
@@ -184,23 +189,17 @@ class CodeExecutionTool:
                 last_output_time = now
 
                 # Check for shell prompt at the end of output
-                last_lines = (
-                    truncated_output.splitlines()[-3:] if truncated_output else []
-                )
+                last_lines = truncated_output.splitlines()[-3:] if truncated_output else []
                 last_lines.reverse()
                 for idx, line in enumerate(last_lines):
                     for pat in prompt_patterns:
                         if pat.search(line.strip()):
-                            PrintStyle.info(
-                                "Detected shell prompt, returning output early."
-                            )
+                            PrintStyle.info("Detected shell prompt, returning output early.")
                             return truncated_output
 
             # Check for max execution time
             if now - start_time > max_exec_timeout:
-                sysinfo = self.read_prompt(
-                    "fw.code.max_time.md", timeout=max_exec_timeout
-                )
+                sysinfo = self.read_prompt("fw.code.max_time.md", timeout=max_exec_timeout)
                 response = self.read_prompt("fw.code.info.md", info=sysinfo)
                 if truncated_output:
                     response = truncated_output + "\n\n" + response
@@ -210,18 +209,14 @@ class CodeExecutionTool:
             # Waiting for first output
             if not got_output:
                 if now - start_time > first_output_timeout:
-                    sysinfo = self.read_prompt(
-                        "fw.code.no_out_time.md", timeout=first_output_timeout
-                    )
+                    sysinfo = self.read_prompt("fw.code.no_out_time.md", timeout=first_output_timeout)
                     response = self.read_prompt("fw.code.info.md", info=sysinfo)
                     PrintStyle.warning(sysinfo)
                     return response
             else:
                 # Waiting for more output after first output
                 if now - last_output_time > between_output_timeout:
-                    sysinfo = self.read_prompt(
-                        "fw.code.pause_time.md", timeout=between_output_timeout
-                    )
+                    sysinfo = self.read_prompt("fw.code.pause_time.md", timeout=between_output_timeout)
                     response = self.read_prompt("fw.code.info.md", info=sysinfo)
                     if truncated_output:
                         response = truncated_output + "\n\n" + response
@@ -231,22 +226,14 @@ class CodeExecutionTool:
                 # potential dialog detection
                 if now - last_output_time > dialog_timeout:
                     # Check for dialog prompt at the end of output
-                    last_lines = (
-                        truncated_output.splitlines()[-2:] if truncated_output else []
-                    )
+                    last_lines = truncated_output.splitlines()[-2:] if truncated_output else []
                     for line in last_lines:
                         for pat in dialog_patterns:
                             if pat.search(line.strip()):
-                                PrintStyle.info(
-                                    "Detected dialog prompt, returning output early."
-                                )
+                                PrintStyle.info("Detected dialog prompt, returning output early.")
 
-                                sysinfo = self.read_prompt(
-                                    "fw.code.pause_dialog.md", timeout=dialog_timeout
-                                )
-                                response = self.read_prompt(
-                                    "fw.code.info.md", info=sysinfo
-                                )
+                                sysinfo = self.read_prompt("fw.code.pause_dialog.md", timeout=dialog_timeout)
+                                response = self.read_prompt("fw.code.info.md", info=sysinfo)
                                 if truncated_output:
                                     response = truncated_output + "\n\n" + response
                                 PrintStyle.warning(sysinfo)
@@ -259,15 +246,11 @@ class CodeExecutionTool:
                 f"Resetting terminal session {session}... Reason: {reason}"
             )
         else:
-            PrintStyle(font_color="#FFA500", bold=True).print(
-                f"Resetting terminal session {session}..."
-            )
+            PrintStyle(font_color="#FFA500", bold=True).print(f"Resetting terminal session {session}...")
 
         # Only reset the specified session while preserving others
         await self.prepare_state(reset=True, session=session)
-        response = self.read_prompt(
-            "fw.code.info.md", info=self.read_prompt("fw.code.reset.md")
-        )
+        response = self.read_prompt("fw.code.info.md", info=self.read_prompt("fw.code.reset.md"))
         return response
 
     def fix_full_output(self, output: str):

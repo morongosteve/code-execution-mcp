@@ -48,13 +48,9 @@ class TTYSession:
     # ── user-facing coroutines ────────────────────────────────────────
     async def start(self):
         if _IS_WIN:
-            self._proc = await _spawn_winpty(
-                self.cmd, self.cwd, self.env, self.echo
-            )  # ← pass echo
+            self._proc = await _spawn_winpty(self.cmd, self.cwd, self.env, self.echo)  # ← pass echo
         else:
-            self._proc = await _spawn_posix_pty(
-                self.cmd, self.cwd, self.env, self.echo
-            )  # ← pass echo
+            self._proc = await _spawn_posix_pty(self.cmd, self.cwd, self.env, self.echo)  # ← pass echo
         self._pump_task = asyncio.create_task(self._pump_stdout())
 
     async def close(self):
@@ -121,14 +117,7 @@ class TTYSession:
 
     async def read_full_until_idle(self, idle_timeout, total_timeout):
         # Collect child output using iter_until_idle to avoid duplicate logic
-        return "".join(
-            [
-                chunk
-                async for chunk in self.read_chunks_until_idle(
-                    idle_timeout, total_timeout
-                )
-            ]
-        )
+        return "".join([chunk async for chunk in self.read_chunks_until_idle(idle_timeout, total_timeout)])
 
     async def read_chunks_until_idle(self, idle_timeout, total_timeout):
         # Yield each chunk as soon as it arrives until idle or total timeout
@@ -309,15 +298,11 @@ if __name__ == "__main__":
             total_timeout = 10 * idle_timeout
             if user == "":
                 # Just read output, do not send empty line
-                async for chunk in term.read_chunks_until_idle(
-                    idle_timeout, total_timeout
-                ):
+                async for chunk in term.read_chunks_until_idle(idle_timeout, total_timeout):
                     print(chunk, end="", flush=True)
             else:
                 await term.sendline(user)
-                async for chunk in term.read_chunks_until_idle(
-                    idle_timeout, total_timeout
-                ):
+                async for chunk in term.read_chunks_until_idle(idle_timeout, total_timeout):
                     print(chunk, end="", flush=True)
 
         await term.sendline("exit")

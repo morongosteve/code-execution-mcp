@@ -41,6 +41,7 @@ sys.stdout = _original_stdout
 # _ModelRegistry helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def fresh_registry():
     """Return a factory that creates a fresh _ModelRegistry with a given capacity."""
@@ -64,6 +65,7 @@ def populated_registry(fresh_registry):
 # ---------------------------------------------------------------------------
 # Global-registry reset fixture (used by HF tool tests)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=False)
 def reset_global_registries():
@@ -90,6 +92,7 @@ def reset_global_registries():
 # CodeExecutionTool fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def code_exec_tool():
     """Return a CodeExecutionTool instance pointed at the real prompts dir."""
@@ -102,10 +105,12 @@ def code_exec_tool():
 # Mock model helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_llm_model():
     """Return a MagicMock that behaves like a LangChain LLM."""
     from unittest.mock import MagicMock
+
     mock = MagicMock(name="MockLLM")
     mock.invoke.return_value = "mock llm output"
     return mock
@@ -115,6 +120,7 @@ def mock_llm_model():
 def mock_embedding_model():
     """Return a MagicMock that behaves like a LangChain embedding model."""
     from unittest.mock import MagicMock
+
     mock = MagicMock(name="MockEmbedding")
     mock.embed_documents.return_value = [[0.1, 0.2, 0.3]]
     mock.embed_query.return_value = [0.1, 0.2, 0.3]

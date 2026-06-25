@@ -163,6 +163,7 @@ _embedding_registry = _ModelRegistry(max_models=MAX_CONCURRENT_EMBEDDINGS)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_hf_token() -> Optional[str]:
     """Retrieve HuggingFace token from environment."""
     import os
@@ -181,6 +182,7 @@ def _truncate_value(v: Any, max_len: int = 200) -> str:
 # ---------------------------------------------------------------------------
 # 1. Core model management tools
 # ---------------------------------------------------------------------------
+
 
 async def list_models() -> str:
     """List all currently loaded HuggingFace models and embeddings with TTL info."""
@@ -274,10 +276,7 @@ async def load_hf_model(
                         )
                     model_kwargs["device_map"] = "auto"
                 except ImportError:
-                    return (
-                        "Quantization requires bitsandbytes. "
-                        "Install with: pip install bitsandbytes"
-                    )
+                    return "Quantization requires bitsandbytes. Install with: pip install bitsandbytes"
 
             llm = HuggingFacePipeline.from_model_id(
                 model_id=repo_id,
@@ -422,6 +421,7 @@ async def load_hf_embeddings(
 # 2. Inference tools
 # ---------------------------------------------------------------------------
 
+
 async def hf_generate(
     prompt: str,
     model: str = "",
@@ -550,11 +550,13 @@ async def hf_embed(
             return json.dumps({"embedding": result, "dimensions": len(result)})
         else:
             result = embeddings_model.embed_documents(texts)
-            return json.dumps({
-                "embeddings_count": len(result),
-                "dimensions": len(result[0]) if result else 0,
-                "embeddings": result,
-            })
+            return json.dumps(
+                {
+                    "embeddings_count": len(result),
+                    "dimensions": len(result[0]) if result else 0,
+                    "embeddings": result,
+                }
+            )
     except Exception as e:
         return f"Error generating embeddings: {e}"
 
@@ -578,6 +580,7 @@ async def unload_model(model: str, model_type: str = "llm") -> str:
         gc.collect()
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except ImportError:
@@ -603,6 +606,7 @@ async def unload_model(model: str, model_type: str = "llm") -> str:
 # ---------------------------------------------------------------------------
 # 3. Pipeline & dataset tools (with safety)
 # ---------------------------------------------------------------------------
+
 
 async def hf_pipeline_task(
     task: str,
@@ -730,6 +734,7 @@ async def hf_dataset_info(
 # 4. LoRA / PEFT adapter support
 # ---------------------------------------------------------------------------
 
+
 async def load_peft_model(
     base_model_id: str,
     adapter_id: str,
@@ -815,10 +820,7 @@ async def load_peft_model(
 
     except ImportError as e:
         missing = str(e)
-        return (
-            f"Missing dependency for PEFT support: {missing}\n"
-            f"Install with: pip install peft bitsandbytes"
-        )
+        return f"Missing dependency for PEFT support: {missing}\nInstall with: pip install peft bitsandbytes"
     except Exception as e:
         return f"Error loading PEFT model: {e}"
 
@@ -826,6 +828,7 @@ async def load_peft_model(
 # ---------------------------------------------------------------------------
 # 5. Diffusers integration for image generation
 # ---------------------------------------------------------------------------
+
 
 async def generate_image(
     prompt: str,
@@ -931,6 +934,7 @@ async def generate_image(
 # 6. RAG pipeline setup via LangChain
 # ---------------------------------------------------------------------------
 
+
 async def setup_rag_pipeline(
     documents_json: str,
     embedding_model: str = "",
@@ -1025,10 +1029,7 @@ async def setup_rag_pipeline(
         )
 
     except ImportError as e:
-        return (
-            f"Missing dependency for RAG: {e}\n"
-            f"Install with: pip install langchain langchain-community faiss-cpu"
-        )
+        return f"Missing dependency for RAG: {e}\nInstall with: pip install langchain langchain-community faiss-cpu"
     except Exception as e:
         return f"Error setting up RAG pipeline: {e}"
 
@@ -1059,9 +1060,7 @@ async def rag_query(
 
         answer = result.get("result", str(result))
         sources = result.get("source_documents", [])
-        source_texts = [
-            _truncate_value(doc.page_content, 200) for doc in sources[:3]
-        ]
+        source_texts = [_truncate_value(doc.page_content, 200) for doc in sources[:3]]
 
         output = {
             "answer": answer,
@@ -1078,6 +1077,7 @@ async def rag_query(
 # 7. Model Download Status
 # ---------------------------------------------------------------------------
 
+
 async def model_download_status(repo_id: str) -> str:
     """Check download/cache status for a HuggingFace model.
 
@@ -1091,8 +1091,8 @@ async def model_download_status(repo_id: str) -> str:
 
         from huggingface_hub import HfApi, scan_cache_dir
 
-        cache_dir = os.getenv("HF_HOME") or os.getenv("HUGGINGFACE_HUB_CACHE") or os.path.expanduser(
-            "~/.cache/huggingface/hub"
+        cache_dir = (
+            os.getenv("HF_HOME") or os.getenv("HUGGINGFACE_HUB_CACHE") or os.path.expanduser("~/.cache/huggingface/hub")
         )
 
         result: dict[str, Any] = {
@@ -1112,9 +1112,7 @@ async def model_download_status(repo_id: str) -> str:
                     result["nb_files"] = repo_info.nb_files
                     result["last_accessed"] = str(repo_info.last_accessed)
                     result["last_modified"] = str(repo_info.last_modified)
-                    result["local_files"] = [
-                        str(rev.commit_hash)[:8] for rev in repo_info.revisions
-                    ]
+                    result["local_files"] = [str(rev.commit_hash)[:8] for rev in repo_info.revisions]
                     break
         except Exception:
             result["cache_scan_error"] = "Could not scan cache directory."
@@ -1124,9 +1122,7 @@ async def model_download_status(repo_id: str) -> str:
             api = HfApi(token=_get_hf_token())
             model_info = api.model_info(repo_id, token=_get_hf_token())
             siblings = model_info.siblings or []
-            total_remote_size = sum(
-                (s.size or 0) for s in siblings
-            )
+            total_remote_size = sum((s.size or 0) for s in siblings)
             result["remote_size_mb"] = round(total_remote_size / (1024 * 1024), 2)
             result["remote_files_count"] = len(siblings)
             result["model_id"] = model_info.id
@@ -1145,6 +1141,7 @@ async def model_download_status(repo_id: str) -> str:
 # ---------------------------------------------------------------------------
 # 8. GPU Memory Monitoring
 # ---------------------------------------------------------------------------
+
 
 async def gpu_status() -> str:
     """Report GPU memory usage, available VRAM, and per-model estimates.
@@ -1213,6 +1210,7 @@ async def gpu_status() -> str:
 # ---------------------------------------------------------------------------
 # 9. Batch Inference
 # ---------------------------------------------------------------------------
+
 
 async def hf_batch_generate(
     prompts_json: str,
@@ -1286,6 +1284,7 @@ async def hf_batch_generate(
 # ---------------------------------------------------------------------------
 # 10. Fine-tuning Tool
 # ---------------------------------------------------------------------------
+
 
 async def hf_finetune(
     base_model_id: str,
@@ -1442,6 +1441,7 @@ async def hf_finetune(
 # 11. Model Benchmarking
 # ---------------------------------------------------------------------------
 
+
 async def hf_benchmark(
     model: str = "",
     prompt: str = "The quick brown fox jumps over the lazy dog.",
@@ -1499,11 +1499,7 @@ async def hf_benchmark(
         successful_tokens = [t for t in token_counts if t > 0]
 
         avg_latency = statistics.mean(latencies)
-        tokens_per_sec = (
-            sum(successful_tokens) / sum(successful_latencies)
-            if successful_latencies
-            else 0
-        )
+        tokens_per_sec = sum(successful_tokens) / sum(successful_latencies) if successful_latencies else 0
 
         sorted_latencies = sorted(latencies)
         p50_idx = len(sorted_latencies) // 2
@@ -1533,6 +1529,7 @@ async def hf_benchmark(
 # ---------------------------------------------------------------------------
 # 12. vLLM / TGI Backend Support
 # ---------------------------------------------------------------------------
+
 
 async def load_vllm_model(
     repo_id: str,
@@ -1614,10 +1611,7 @@ async def load_vllm_model(
         return msg
 
     except ImportError:
-        return (
-            "Missing dependency for vLLM/TGI client. Install with:\n"
-            "  pip install openai langchain-community"
-        )
+        return "Missing dependency for vLLM/TGI client. Install with:\n  pip install openai langchain-community"
     except Exception as e:
         return f"Error connecting to {backend.upper()} server: {e}"
 
@@ -1625,6 +1619,7 @@ async def load_vllm_model(
 # ---------------------------------------------------------------------------
 # 13. Audio Pipeline
 # ---------------------------------------------------------------------------
+
 
 async def hf_audio_transcribe(
     audio_path: str,
@@ -1728,26 +1723,27 @@ async def hf_text_to_speech(
             if audio_data is not None:
                 sf.write(output_path, audio_data, sampling_rate)
                 import os
+
                 file_size = os.path.getsize(output_path)
 
-                return json.dumps({
-                    "status": "success",
-                    "model": model,
-                    "output_path": output_path,
-                    "text_length": len(text),
-                    "sampling_rate": sampling_rate,
-                    "file_size_bytes": file_size,
-                }, indent=2)
+                return json.dumps(
+                    {
+                        "status": "success",
+                        "model": model,
+                        "output_path": output_path,
+                        "text_length": len(text),
+                        "sampling_rate": sampling_rate,
+                        "file_size_bytes": file_size,
+                    },
+                    indent=2,
+                )
             else:
                 return "Error: TTS pipeline returned no audio data."
         else:
             return f"Unexpected TTS result format: {type(result).__name__}"
 
     except ImportError as e:
-        return (
-            f"Missing dependency for text-to-speech: {e}\n"
-            f"Install with: pip install transformers[torch] soundfile"
-        )
+        return f"Missing dependency for text-to-speech: {e}\nInstall with: pip install transformers[torch] soundfile"
     except Exception as e:
         return f"Error in text-to-speech: {e}"
 
@@ -1755,6 +1751,7 @@ async def hf_text_to_speech(
 # ---------------------------------------------------------------------------
 # 14. Model Caching / Persistence
 # ---------------------------------------------------------------------------
+
 
 async def save_registry_state(path: str = ".model_registry_state.json") -> str:
     """Save current model registry state to disk for later restoration.
@@ -1769,23 +1766,27 @@ async def save_registry_state(path: str = ".model_registry_state.json") -> str:
     try:
         model_entries: list[dict[str, Any]] = []
         for key, entry in _model_registry._entries.items():
-            model_entries.append({
-                "key": key,
-                "repo_id": entry.repo_id,
-                "backend": entry.backend,
-                "ttl": entry.ttl,
-                "type": "llm",
-            })
+            model_entries.append(
+                {
+                    "key": key,
+                    "repo_id": entry.repo_id,
+                    "backend": entry.backend,
+                    "ttl": entry.ttl,
+                    "type": "llm",
+                }
+            )
 
         embedding_entries: list[dict[str, Any]] = []
         for key, entry in _embedding_registry._entries.items():
-            embedding_entries.append({
-                "key": key,
-                "repo_id": entry.repo_id,
-                "backend": entry.backend,
-                "ttl": entry.ttl,
-                "type": "embedding",
-            })
+            embedding_entries.append(
+                {
+                    "key": key,
+                    "repo_id": entry.repo_id,
+                    "backend": entry.backend,
+                    "ttl": entry.ttl,
+                    "type": "embedding",
+                }
+            )
 
         state = {
             "saved_at": time.time(),
@@ -1796,12 +1797,15 @@ async def save_registry_state(path: str = ".model_registry_state.json") -> str:
         with open(path, "w") as f:
             json.dump(state, f, indent=2)
 
-        return json.dumps({
-            "status": "success",
-            "path": path,
-            "models_saved": len(model_entries),
-            "embeddings_saved": len(embedding_entries),
-        }, indent=2)
+        return json.dumps(
+            {
+                "status": "success",
+                "path": path,
+                "models_saved": len(model_entries),
+                "embeddings_saved": len(embedding_entries),
+            },
+            indent=2,
+        )
 
     except Exception as e:
         return f"Error saving registry state: {e}"

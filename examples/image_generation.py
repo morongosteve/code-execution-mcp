@@ -9,7 +9,7 @@ api_image = {
     "args": {
         "prompt": "A futuristic city at sunset, digital art, highly detailed",
         "backend": "api",
-    }
+    },
 }
 
 # Example 2: Generate an image locally with a specific model
@@ -20,7 +20,7 @@ local_image = {
         "backend": "local",
         "model": "stabilityai/stable-diffusion-xl-base-1.0",
         "output_path": "cat_tophat.png",
-    }
+    },
 }
 
 # Example 3: Generate with FLUX model via API
@@ -30,14 +30,11 @@ flux_image = {
         "prompt": "An astronaut riding a horse on Mars, photorealistic",
         "backend": "api",
         "model": "black-forest-labs/FLUX.1-schnell",
-    }
+    },
 }
 
 # Example 4: Check GPU status before local generation
-gpu_check = {
-    "tool": "hf_gpu_status",
-    "args": {}
-}
+gpu_check = {"tool": "hf_gpu_status", "args": {}}
 
 print("Image Generation Example")
 print("=" * 50)

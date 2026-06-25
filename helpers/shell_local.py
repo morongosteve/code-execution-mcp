@@ -8,8 +8,8 @@ from .shell_utils import clean_string
 class LocalInteractiveSession:
     def __init__(self, executable: str | None = None):
         self.executable = executable
-        self.session: tty_session.TTYSession|None = None
-        self.full_output = ''
+        self.session: tty_session.TTYSession | None = None
+        self.full_output = ""
 
     async def connect(self):
         self.session = tty_session.TTYSession(self.executable, env=os.environ.copy())

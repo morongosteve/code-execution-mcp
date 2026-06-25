@@ -12,7 +12,7 @@ load_4bit = {
         "adapter_id": "my-org/llama3-lora-adapter",
         "quantize": "4bit",
         "max_new_tokens": 256,
-    }
+    },
 }
 
 # Example 2: Load a PEFT adapter with 8-bit quantization
@@ -23,7 +23,7 @@ load_8bit = {
         "adapter_id": "my-org/mistral-lora-finetuned",
         "quantize": "8bit",
         "max_new_tokens": 512,
-    }
+    },
 }
 
 # Example 3: Load without quantization (full precision)
@@ -32,7 +32,7 @@ load_full = {
     "args": {
         "base_model": "meta-llama/Meta-Llama-3-8B",
         "adapter_id": "my-org/llama3-lora-adapter",
-    }
+    },
 }
 
 # Example 4: Generate text with the loaded PEFT model
@@ -41,7 +41,7 @@ generate = {
     "args": {
         "prompt": "Summarize the key benefits of transfer learning:",
         "model": "meta-llama/Meta-Llama-3-8B",
-    }
+    },
 }
 
 # Example 5: Fine-tune a new LoRA adapter
@@ -53,7 +53,7 @@ finetune = {
         "output_dir": "./my-lora-adapter",
         "num_epochs": 1,
         "learning_rate": 2e-4,
-    }
+    },
 }
 
 # Example 6: Benchmark the model
@@ -62,7 +62,7 @@ benchmark = {
     "args": {
         "model": "meta-llama/Meta-Llama-3-8B",
         "num_runs": 10,
-    }
+    },
 }
 
 print("PEFT/LoRA Adapter Example")

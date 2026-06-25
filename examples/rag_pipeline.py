@@ -9,7 +9,7 @@ step1 = {
     "args": {
         "repo_id": "meta-llama/Meta-Llama-3-8B-Instruct",
         "backend": "api",
-    }
+    },
 }
 
 # Step 2: Load embeddings
@@ -17,23 +17,23 @@ step2 = {
     "tool": "hf_load_embeddings",
     "args": {
         "model_name": "sentence-transformers/all-mpnet-base-v2",
-    }
+    },
 }
 
 # Step 3: Set up RAG pipeline with documents
 step3 = {
     "tool": "hf_setup_rag",
     "args": {
-        "documents_json": '['
-            '"Python is a high-level programming language known for readability.", '
-            '"JavaScript is the language of the web, running in browsers.", '
-            '"Rust focuses on safety and performance with zero-cost abstractions.", '
-            '"Go was designed at Google for simplicity and concurrency."'
-        ']',
+        "documents_json": "["
+        '"Python is a high-level programming language known for readability.", '
+        '"JavaScript is the language of the web, running in browsers.", '
+        '"Rust focuses on safety and performance with zero-cost abstractions.", '
+        '"Go was designed at Google for simplicity and concurrency."'
+        "]",
         "chunk_size": 200,
         "chunk_overlap": 20,
         "search_k": 2,
-    }
+    },
 }
 
 # Step 4: Query the RAG pipeline
@@ -41,7 +41,7 @@ step4 = {
     "tool": "hf_rag_query",
     "args": {
         "query": "Which language is best for web development?",
-    }
+    },
 }
 
 print("RAG Pipeline Example")

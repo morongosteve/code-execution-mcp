@@ -13,7 +13,6 @@ Includes:
 """
 
 import asyncio
-import functools
 import gc
 import json
 import time
@@ -259,8 +258,8 @@ async def load_hf_model(
             model_kwargs: dict[str, Any] = {}
             if quantize in ("4bit", "8bit"):
                 try:
-                    from transformers import BitsAndBytesConfig
                     import torch
+                    from transformers import BitsAndBytesConfig
 
                     if quantize == "4bit":
                         model_kwargs["quantization_config"] = BitsAndBytesConfig(
@@ -762,9 +761,9 @@ async def load_peft_model(
         return f"Model '{model_key}' is already loaded."
 
     try:
-        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-        from peft import PeftModel
         import torch
+        from peft import PeftModel
+        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
         # Quantization config
         quant_kwargs: dict[str, Any] = {}
@@ -985,10 +984,10 @@ async def setup_rag_pipeline(
         return "documents_json must be a non-empty JSON array of strings."
 
     try:
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
-        from langchain_community.vectorstores import FAISS
         from langchain.chains import RetrievalQA
         from langchain.schema import Document
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        from langchain_community.vectorstores import FAISS
 
         documents = [Document(page_content=str(d)) for d in docs_raw]
 
@@ -1088,8 +1087,9 @@ async def model_download_status(repo_id: str) -> str:
         repo_id: HuggingFace model repository ID (e.g. 'meta-llama/Meta-Llama-3-8B-Instruct')
     """
     try:
-        from huggingface_hub import scan_cache_dir, HfApi
         import os
+
+        from huggingface_hub import HfApi, scan_cache_dir
 
         cache_dir = os.getenv("HF_HOME") or os.getenv("HUGGINGFACE_HUB_CACHE") or os.path.expanduser(
             "~/.cache/huggingface/hub"
@@ -1316,9 +1316,9 @@ async def hf_finetune(
     """
     try:
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-        from peft import LoraConfig, get_peft_model, TaskType
         from datasets import load_dataset
+        from peft import LoraConfig, TaskType, get_peft_model
+        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     except ImportError as e:
         return (
             f"Missing dependency for fine-tuning: {e}\n"
@@ -1368,7 +1368,7 @@ async def hf_finetune(
 
         # Try to use SFTTrainer from trl
         try:
-            from trl import SFTTrainer, SFTConfig
+            from trl import SFTConfig, SFTTrainer
 
             training_args = SFTConfig(
                 output_dir=output_dir,
@@ -1390,7 +1390,7 @@ async def hf_finetune(
             )
         except ImportError:
             # Fall back to standard Trainer if trl not available
-            from transformers import TrainingArguments, Trainer
+            from transformers import Trainer, TrainingArguments
 
             training_args = TrainingArguments(
                 output_dir=output_dir,
@@ -1495,7 +1495,7 @@ async def hf_benchmark(
         if not latencies:
             return f"Benchmark failed: all {num_runs} runs errored."
 
-        successful_latencies = [l for l, t in zip(latencies, token_counts) if t > 0]
+        successful_latencies = [lat for lat, t in zip(latencies, token_counts) if t > 0]
         successful_tokens = [t for t in token_counts if t > 0]
 
         avg_latency = statistics.mean(latencies)
@@ -1644,8 +1644,9 @@ async def hf_audio_transcribe(
         task: 'transcribe' for same-language transcription, 'translate' for translation to English.
     """
     try:
-        from transformers import pipeline as hf_pipeline
         import os
+
+        from transformers import pipeline as hf_pipeline
 
         if not os.path.isfile(audio_path):
             return f"Audio file not found: {audio_path}"
@@ -1705,8 +1706,8 @@ async def hf_text_to_speech(
         output_path: Path to save the output audio file (default: 'output.wav').
     """
     try:
-        from transformers import pipeline as hf_pipeline
         import soundfile as sf
+        from transformers import pipeline as hf_pipeline
 
         token = _get_hf_token()
         pipe_kwargs: dict[str, Any] = {

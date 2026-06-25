@@ -1,14 +1,15 @@
 import asyncio
-from dataclasses import dataclass
-import shlex
-import time
-import re
 import os
+import re
+import shlex
 import sys
+import time
+from dataclasses import dataclass
+
+from helpers.log import Log
 from helpers.print_style import PrintStyle
 from helpers.shell_local import LocalInteractiveSession
 from helpers.strings import truncate_text as truncate_text_string
-from helpers.log import Log
 
 
 def truncate_text_agent(output: str, threshold: int = 1000000) -> str:
@@ -102,7 +103,7 @@ class CodeExecutionTool:
 
                 PrintStyle(
                     background_color="white", font_color="#1B4F72", bold=True
-                ).print(f"Code execution output (local)")
+                ).print("Code execution output (local)")
 
                 return await self.get_terminal_output(session=session, prefix=prefix)
 

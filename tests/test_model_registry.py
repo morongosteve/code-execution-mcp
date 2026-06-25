@@ -7,7 +7,6 @@ import pytest
 
 from huggingface_tools import _ModelEntry, _ModelRegistry
 
-
 # ============================================================================
 # _ModelEntry unit tests
 # ============================================================================
@@ -245,7 +244,7 @@ class TestRegistryTTLExpiration:
             # Advance past TTL so both expire
             mock_time.monotonic.return_value = base + 6
             # This put should first evict the expired ones, then add the new one
-            evicted = reg.put("c", "obj-c", ttl=100, backend="api", repo_id="r/c")
+            reg.put("c", "obj-c", ttl=100, backend="api", repo_id="r/c")
             # The expired entries are cleaned silently by _evict_expired,
             # not returned by put() (put only returns LRU evictions)
             assert len(reg) == 1

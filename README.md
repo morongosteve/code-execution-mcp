@@ -433,7 +433,7 @@ Query the configured RAG pipeline.
 hf_rag_query query="Which language is best for web development?"
 ```
 
-### hf_batch_generate
+### hf_batch_text_generate
 
 Generate text for multiple prompts in batch.
 
@@ -444,10 +444,10 @@ Generate text for multiple prompts in batch.
 
 **Example:**
 ```json
-hf_batch_generate prompts_json='["Explain gravity", "What is photosynthesis?", "Define entropy"]'
+hf_batch_text_generate prompts_json='["Explain gravity", "What is photosynthesis?", "Define entropy"]'
 ```
 
-### hf_finetune
+### hf_finetune_model
 
 Fine-tune a model using SFTTrainer with LoRA.
 
@@ -461,10 +461,10 @@ Fine-tune a model using SFTTrainer with LoRA.
 
 **Example:**
 ```
-hf_finetune model_name="meta-llama/Meta-Llama-3-8B" dataset_name="tatsu-lab/alpaca" output_dir="./finetuned-model" num_epochs=1
+hf_finetune_model model_name="meta-llama/Meta-Llama-3-8B" dataset_name="tatsu-lab/alpaca" output_dir="./finetuned-model" num_epochs=1
 ```
 
-### hf_benchmark
+### hf_benchmark_model
 
 Benchmark a loaded model for latency and throughput.
 
@@ -475,7 +475,7 @@ Benchmark a loaded model for latency and throughput.
 
 **Example:**
 ```
-hf_benchmark model="meta-llama/Meta-Llama-3-8B-Instruct" num_runs=10
+hf_benchmark_model model="meta-llama/Meta-Llama-3-8B-Instruct" num_runs=10
 ```
 
 ### hf_load_vllm_model
@@ -493,7 +493,7 @@ Connect to a vLLM or TGI inference server.
 hf_load_vllm_model model_name="meta-llama/Meta-Llama-3-8B-Instruct" base_url="http://localhost:8000/v1"
 ```
 
-### hf_audio_transcribe
+### hf_transcribe_audio
 
 Transcribe audio using Whisper.
 
@@ -504,10 +504,10 @@ Transcribe audio using Whisper.
 
 **Example:**
 ```
-hf_audio_transcribe audio_path="/path/to/audio.wav" model="openai/whisper-large-v3"
+hf_transcribe_audio audio_path="/path/to/audio.wav" model="openai/whisper-large-v3"
 ```
 
-### hf_text_to_speech
+### hf_speak_text
 
 Convert text to speech audio.
 
@@ -519,7 +519,7 @@ Convert text to speech audio.
 
 **Example:**
 ```
-hf_text_to_speech text="Hello, this is a test of text to speech." output_path="output.wav"
+hf_speak_text text="Hello, this is a test of text to speech." output_path="output.wav"
 ```
 
 ### hf_gpu_status
